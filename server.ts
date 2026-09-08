@@ -95,6 +95,58 @@ function requireAdminAuth(req: any, res: any, next: any) {
   return res.status(401).json({ success: false, message: "Accès admin refusé." });
 }
 
+// --- Forfaits : Essai gratuit, Pass Jour (300F/24h), Mensuel (5000F), Premium (12000F/mois) ---
+// Correspond exactement au cahier des charges validé pour SkinDiag.
+const PLAN_DURATIONS_MS: Record<string, number> = {
+  free_trial: 3 * 24 * 60 * 60 * 1000,  // 3 jours d'essai
+  payg_day: 24 * 60 * 60 * 1000,        // Pass Jour 300F
+  monthly: 30 * 24 * 60 * 60 * 1000,    // Mensuel 5000F
+  premium: 30 * 24 * 60 * 60 * 1000,    // Premium 12000F/mois
+};
+const PLAN_LIMITS: Record<string, number> = {
+  free_trial: 3,
+  free_expired: 0,
+  payg_day: Infinity,
+  monthly: 30,
+  premium: Infinity,
+};
+// phone -> { plan, activatedAt }
+const userPlans = new Map<string, { plan: string; activatedAt: number }>();
+// phone -> { count, periodStart }
+const usageTracking = new Map<string, { count: number; periodStart: number }>();
+// Demandes d'activation en attente de validation manuelle (paiement Wave)
+const pendingActivations = new Map<string, { phone: string; plan: string; amount: number; requestedAt: number }>();
+
+function getEffectivePlan(phone: string): string {
+  const record = userPlans.get(phone);
+  if (!record) return "free_trial";
+  const duration = PLAN_DURATIONS_MS[record.plan];
+  if (duration && Date.now() - record.activatedAt > duration) {
+    return record.plan === "free_trial" ? "free_expired" : record.plan; // forfaits payants : accès conservé, à renouveler manuellement
+  }
+  return record.plan;
+}
+
+async function persistPlan(phone: string): Promise<void> {
+  if (!pool) return;
+  const p = userPlans.get(phone);
+  if (!p) return;
+  try {
+    await pool.query(
+      `INSERT INTO plans (phone, plan, activated_at) VALUES ($1,$2,$3)
+       ON CONFLICT (phone) DO UPDATE SET plan=$2, activated_at=$3`,
+      [phone, p.plan, p.activatedAt]
+    );
+  } catch (err: any) {
+    console.error("[DB] Échec sauvegarde forfait:", err.message);
+  }
+}
+
+function setUserPlan(phone: string, plan: string): void {
+  userPlans.set(phone, { plan, activatedAt: Date.now() });
+  persistPlan(phone).catch(() => {});
+}
+
 let aiClient: GoogleGenAI | null = null;
 function getAIClient(): GoogleGenAI {
   if (!aiClient) {
@@ -131,6 +183,11 @@ async function initDatabase(): Promise<void> {
       phone TEXT NOT NULL,
       created_at BIGINT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS plans (
+      phone TEXT PRIMARY KEY,
+      plan TEXT NOT NULL,
+      activated_at BIGINT NOT NULL
+    );
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -153,9 +210,15 @@ async function initDatabase(): Promise<void> {
   }
   console.log(`[DB] ${accountsRes.rows.length} compte(s), ${loadedSessions} session(s) rechargé(s).`);
 
+  const plansRes = await pool.query("SELECT * FROM plans");
+  for (const row of plansRes.rows) {
+    userPlans.set(row.phone, { plan: row.plan, activatedAt: Number(row.activated_at) });
+  }
+
   // Compte admin "graine" créé une seule fois depuis les variables d'environnement
   if (process.env.ADMIN_SEED_PHONE && process.env.ADMIN_SEED_PASSWORD && !userAccounts.has(process.env.ADMIN_SEED_PHONE)) {
     createAccount(process.env.ADMIN_SEED_PHONE, process.env.ADMIN_SEED_PASSWORD, true);
+    setUserPlan(process.env.ADMIN_SEED_PHONE, "premium");
     console.log(`[Démarrage] Compte admin créé pour ${process.env.ADMIN_SEED_PHONE}.`);
   }
 
@@ -225,32 +288,89 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
   res.json({ success: true, sessionToken: token, isAdmin: isAdminAccount });
 });
 
-app.get("/api/user/status", requireAuth, (req: any, res) => {
-  const acc = userAccounts.get(req.session.phone);
-  res.json({ success: true, phone: req.session.phone, isAdmin: acc?.isAdmin === true });
-});
-
-app.post("/api/admin/create-account", requireAdminAuth, (req, res) => {
-  const { phone, password, isAdmin } = req.body;
-  if (!phone || !password) {
-    return res.status(400).json({ success: false, message: "Numéro et mot de passe requis." });
-  }
-  createAccount(phone, password, isAdmin === true);
-  res.json({ success: true });
-});
-
 app.get("/api/admin/accounts", requireAdminAuth, (req, res) => {
   const accounts = Array.from(userAccounts.entries()).map(([phone, acc]) => ({
-    phone, createdAt: acc.createdAt, isAdmin: acc.isAdmin,
+    phone, createdAt: acc.createdAt, isAdmin: acc.isAdmin, plan: getEffectivePlan(phone),
   }));
   res.json({ success: true, accounts });
 });
 
-app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req, res) => {
+app.post("/api/admin/create-account", requireAdminAuth, (req, res) => {
+  const { phone, password, isAdmin, plan } = req.body;
+  if (!phone || !password) {
+    return res.status(400).json({ success: false, message: "Numéro et mot de passe requis." });
+  }
+  createAccount(phone, password, isAdmin === true);
+  if (plan) setUserPlan(phone, plan);
+  res.json({ success: true });
+});
+
+app.post("/api/admin/set-plan", requireAdminAuth, (req, res) => {
+  const { phone, plan } = req.body;
+  if (!phone || !plan) return res.status(400).json({ success: false, message: "Numéro et forfait requis." });
+  setUserPlan(phone, plan);
+  res.json({ success: true });
+});
+
+app.get("/api/admin/pending-activations", requireAdminAuth, (req, res) => {
+  res.json({ success: true, pending: Array.from(pendingActivations.values()) });
+});
+
+app.post("/api/admin/activate-plan/:phone", requireAdminAuth, (req, res) => {
+  const { phone } = req.params;
+  const pending = pendingActivations.get(phone);
+  if (!pending) return res.status(404).json({ success: false, message: "Aucune demande en attente pour ce numéro." });
+  setUserPlan(phone, pending.plan);
+  pendingActivations.delete(phone);
+  res.json({ success: true });
+});
+
+app.get("/api/user/status", requireAuth, (req: any, res) => {
+  const acc = userAccounts.get(req.session.phone);
+  const plan = getEffectivePlan(req.session.phone);
+  const usage = usageTracking.get(req.session.phone);
+  res.json({
+    success: true,
+    phone: req.session.phone,
+    isAdmin: acc?.isAdmin === true,
+    plan,
+    // Infinity ne se sérialise pas en JSON (devient null) — on envoie -1 pour "illimité"
+    limit: PLAN_LIMITS[plan] === Infinity ? -1 : (PLAN_LIMITS[plan] ?? 0),
+    used: usage?.count ?? 0,
+  });
+});
+
+app.post("/api/user/request-activation", requireAuth, (req: any, res) => {
+  const { plan, amount } = req.body;
+  if (!plan || !amount) return res.status(400).json({ success: false, message: "Forfait et montant requis." });
+  pendingActivations.set(req.session.phone, { phone: req.session.phone, plan, amount, requestedAt: Date.now() });
+  res.json({ success: true });
+});
+
+app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req: any, res) => {
   try {
     const { zone, image, mimeType } = req.body;
     if (!image || !mimeType) {
       return res.status(400).json({ success: false, message: "Photo requise pour l'analyse." });
+    }
+
+    // Vérification du quota selon le forfait actif
+    const phone = req.session.phone;
+    const plan = getEffectivePlan(phone);
+    const limit = PLAN_LIMITS[plan] ?? 0;
+    const usage = usageTracking.get(phone) || { count: 0, periodStart: Date.now() };
+    // Réinitialise le compteur mensuel pour les forfaits limités par mois (30 jours glissants)
+    if (plan === "monthly" && Date.now() - usage.periodStart > 30 * 24 * 60 * 60 * 1000) {
+      usage.count = 0;
+      usage.periodStart = Date.now();
+    }
+    if (usage.count >= limit) {
+      return res.status(403).json({
+        success: false,
+        message: plan === "free_expired"
+          ? "Votre essai gratuit est terminé. Choisissez un forfait pour continuer."
+          : "Quota atteint pour votre forfait actuel. Passez à un forfait supérieur pour continuer.",
+      });
     }
 
     // Récupère les produits disponibles pour un matching pertinent par l'IA
@@ -316,6 +436,10 @@ ${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category:
 
     const parsed = JSON.parse(response.text || "{}");
     const produitsRecommandes = availableProducts.filter((p) => parsed.produitIdsRecommandes?.includes(p.id));
+
+    // Incrémente le compteur d'usage seulement après une analyse réussie
+    usage.count += 1;
+    usageTracking.set(phone, usage);
 
     res.json({
       success: true,

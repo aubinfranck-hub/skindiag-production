@@ -1,13 +1,22 @@
-import React, { useState } from "react";
-import { Scan, History, User, Sparkles, LogOut } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Scan, History, User, Sparkles, LogOut, CreditCard, ShieldCheck } from "lucide-react";
 import ZoneSelector from "./components/ZoneSelector";
 import PhotoCapture from "./components/PhotoCapture";
 import ResultsView from "./components/ResultsView";
 import LoginScreen from "./components/LoginScreen";
+import SubscriptionPanel from "./components/SubscriptionPanel";
+import AdminDashboard from "./components/AdminDashboard";
 import { SkinZone, SkinAnalysisResult } from "./types";
 
-type Tab = "diagnostic" | "historique" | "profil";
+type Tab = "diagnostic" | "historique" | "abonnement" | "admin" | "profil";
 type Step = "zone" | "capture" | "resultat";
+
+interface UserStatus {
+  isAdmin: boolean;
+  plan: string;
+  limit: number;
+  used: number;
+}
 
 export default function App() {
   const [sessionToken, setSessionToken] = useState<string | null>(() => localStorage.getItem("skindiag_token"));
@@ -16,6 +25,8 @@ export default function App() {
   const [zone, setZone] = useState<SkinZone>("visage");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<SkinAnalysisResult | null>(null);
+  const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
+  const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
   const [history, setHistory] = useState<SkinAnalysisResult[]>(() => {
     try {
       return JSON.parse(localStorage.getItem("skindiag_history") || "[]");
@@ -24,38 +35,57 @@ export default function App() {
     }
   });
 
-  const handleLoginSuccess = (token: string, _isAdmin: boolean) => {
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("skindiag_token");
+    setSessionToken(null);
+    setUserStatus(null);
+  }, []);
+
+  const loadStatus = useCallback(async (token: string) => {
+    try {
+      const res = await fetch("/api/user/status", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) { handleLogout(); return; }
+      const data = await res.json();
+      if (data.success) {
+        setUserStatus({ isAdmin: data.isAdmin, plan: data.plan, limit: data.limit, used: data.used });
+      }
+    } catch {
+      // silencieux, l'utilisateur peut continuer, on réessaiera
+    }
+  }, [handleLogout]);
+
+  useEffect(() => {
+    if (sessionToken) loadStatus(sessionToken);
+  }, [sessionToken, loadStatus]);
+
+  const handleLoginSuccess = (token: string) => {
     localStorage.setItem("skindiag_token", token);
     setSessionToken(token);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("skindiag_token");
-    setSessionToken(null);
-  };
-
   const handleAnalyze = async (base64: string, mimeType: string) => {
     setIsLoading(true);
+    setQuotaMessage(null);
     try {
       const res = await fetch("/api/skindiag/analyze", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToken}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
         body: JSON.stringify({ zone, image: base64, mimeType }),
       });
-      if (res.status === 401) {
-        handleLogout();
+      if (res.status === 401) { handleLogout(); return; }
+      const data = await res.json();
+      if (res.status === 403) {
+        setQuotaMessage(data.message);
+        setActiveTab("abonnement");
         return;
       }
-      const data = await res.json();
       if (data.success) {
         setResult(data.result);
         const newHistory = [data.result, ...history].slice(0, 20);
         setHistory(newHistory);
         localStorage.setItem("skindiag_history", JSON.stringify(newHistory));
         setStep("resultat");
+        if (sessionToken) loadStatus(sessionToken);
       } else {
         alert(data.message || "L'analyse a échoué. Réessayez.");
       }
@@ -75,6 +105,14 @@ export default function App() {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
+  const tabs = [
+    { id: "diagnostic" as Tab, label: "Analyser", icon: Scan },
+    { id: "historique" as Tab, label: "Historique", icon: History },
+    { id: "abonnement" as Tab, label: "Abonnement", icon: CreditCard },
+    ...(userStatus?.isAdmin ? [{ id: "admin" as Tab, label: "Admin", icon: ShieldCheck }] : []),
+    { id: "profil" as Tab, label: "Profil", icon: User },
+  ];
+
   return (
     <div className="min-h-screen bg-[#140d0c] font-sans text-[#f5ede1] pb-24 lg:pb-0 lg:flex">
       {/* Sidebar desktop */}
@@ -86,11 +124,7 @@ export default function App() {
           <span className="font-display text-lg font-semibold">SkinDiag</span>
         </div>
         <nav className="space-y-1.5">
-          {[
-            { id: "diagnostic" as Tab, label: "Analyser", icon: Scan },
-            { id: "historique" as Tab, label: "Historique", icon: History },
-            { id: "profil" as Tab, label: "Profil", icon: User },
-          ].map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
@@ -114,17 +148,19 @@ export default function App() {
 
       {/* Contenu principal */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-5 py-6 lg:py-10">
+        {quotaMessage && activeTab === "abonnement" && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-5 text-sm text-amber-300">
+            {quotaMessage}
+          </div>
+        )}
+
         {activeTab === "diagnostic" && (
           <>
-            {step === "zone" && (
-              <ZoneSelector onSelect={(z) => { setZone(z); setStep("capture"); }} />
-            )}
+            {step === "zone" && <ZoneSelector onSelect={(z) => { setZone(z); setStep("capture"); }} />}
             {step === "capture" && (
               <PhotoCapture zone={zone} onBack={() => setStep("zone")} onCapture={handleAnalyze} isLoading={isLoading} />
             )}
-            {step === "resultat" && result && (
-              <ResultsView result={result} onRestart={restart} />
-            )}
+            {step === "resultat" && result && <ResultsView result={result} onRestart={restart} />}
           </>
         )}
 
@@ -149,6 +185,20 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === "abonnement" && sessionToken && (
+          <SubscriptionPanel
+            token={sessionToken}
+            currentPlan={userStatus?.plan || "free_trial"}
+            used={userStatus?.used || 0}
+            limit={userStatus?.limit ?? 3}
+            onRequestSent={() => setQuotaMessage(null)}
+          />
+        )}
+
+        {activeTab === "admin" && sessionToken && userStatus?.isAdmin && (
+          <AdminDashboard token={sessionToken} />
+        )}
+
         {activeTab === "profil" && (
           <div className="animate-fade-in">
             <h2 className="text-2xl font-display font-semibold mb-6">Profil</h2>
@@ -168,12 +218,8 @@ export default function App() {
       </main>
 
       {/* Nav mobile */}
-      <nav className="lg:hidden fixed bottom-4 left-4 right-4 bg-black/70 backdrop-blur-lg border border-white/10 rounded-2xl p-1.5 flex items-center justify-around">
-        {[
-          { id: "diagnostic" as Tab, label: "Analyser", icon: Scan },
-          { id: "historique" as Tab, label: "Historique", icon: History },
-          { id: "profil" as Tab, label: "Profil", icon: User },
-        ].map((t) => (
+      <nav className="lg:hidden fixed bottom-4 left-4 right-4 bg-black/70 backdrop-blur-lg border border-white/10 rounded-2xl p-1.5 flex items-center justify-around overflow-x-auto">
+        {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
