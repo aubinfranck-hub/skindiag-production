@@ -54,9 +54,26 @@ export default function App() {
     }
   }, [handleLogout]);
 
+  const loadHistory = useCallback(async (token: string) => {
+    try {
+      const res = await fetch("/api/skindiag/history", { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) { handleLogout(); return; }
+      const data = await res.json();
+      if (data.success) {
+        setHistory(data.history);
+        localStorage.setItem("skindiag_history", JSON.stringify(data.history));
+      }
+    } catch {
+      // silencieux : on garde l'historique local déjà chargé en attendant
+    }
+  }, [handleLogout]);
+
   useEffect(() => {
-    if (sessionToken) loadStatus(sessionToken);
-  }, [sessionToken, loadStatus]);
+    if (sessionToken) {
+      loadStatus(sessionToken);
+      loadHistory(sessionToken);
+    }
+  }, [sessionToken, loadStatus, loadHistory]);
 
   const handleLoginSuccess = (token: string) => {
     localStorage.setItem("skindiag_token", token);
@@ -81,11 +98,11 @@ export default function App() {
       }
       if (data.success) {
         setResult(data.result);
-        const newHistory = [data.result, ...history].slice(0, 20);
-        setHistory(newHistory);
-        localStorage.setItem("skindiag_history", JSON.stringify(newHistory));
         setStep("resultat");
-        if (sessionToken) loadStatus(sessionToken);
+        if (sessionToken) {
+          loadStatus(sessionToken);
+          loadHistory(sessionToken);
+        }
       } else {
         alert(data.message || "L'analyse a échoué. Réessayez.");
       }

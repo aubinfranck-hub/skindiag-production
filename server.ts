@@ -156,6 +156,27 @@ function getAIClient(): GoogleGenAI {
   return aiClient;
 }
 
+// Réessaie automatiquement en cas de surcharge temporaire de Gemini (503/UNAVAILABLE) ou
+// d'erreur réseau passagère — jusqu'à 3 tentatives avec délai croissant. Sans ça, un simple
+// pic de charge chez Google fait échouer l'analyse immédiatement pour l'utilisateur.
+async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      const message = String(err?.message || err);
+      const isRetryable = message.includes("503") || message.includes("UNAVAILABLE") || message.includes("overloaded") || message.includes("ECONNRESET") || message.includes("fetch failed");
+      if (!isRetryable || attempt === maxRetries - 1) throw err;
+      const delayMs = 800 * Math.pow(2, attempt); // 800ms, 1.6s, 3.2s
+      console.warn(`[Retry] Tentative ${attempt + 1}/${maxRetries} échouée (${message.slice(0, 80)}), nouvel essai dans ${delayMs}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 async function initDatabase(): Promise<void> {
   if (!pool) {
     console.warn("[DB] DATABASE_URL non configuré — les produits ne seront pas chargés depuis la base.");
@@ -188,6 +209,14 @@ async function initDatabase(): Promise<void> {
       plan TEXT NOT NULL,
       activated_at BIGINT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS analysis_history (
+      id SERIAL PRIMARY KEY,
+      phone TEXT NOT NULL,
+      zone TEXT NOT NULL,
+      result_json JSONB NOT NULL,
+      created_at BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_history_phone ON analysis_history (phone, created_at DESC);
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -391,7 +420,7 @@ Analyse la photo de la zone "${zone}" fournie et réponds en JSON structuré sel
 Produits disponibles à recommander (uniquement ceux réellement pertinents pour ce que tu observes) :
 ${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category: p.category, suitable_for: p.suitable_for })))}`;
 
-    const response = await getAIClient().models.generateContent({
+    const response = await retryWithBackoff(() => getAIClient().models.generateContent({
       model: "gemini-3.5-flash",
       contents: {
         parts: [
@@ -432,7 +461,7 @@ ${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category:
           required: ["scoreGlobal", "typeDePeau", "hydratation", "uniformite", "conditionsDetectees", "explicationSimple", "recommandationProfessionnel", "routineMatin", "routineSoir", "produitIdsRecommandes", "confiance"],
         },
       },
-    });
+    }));
 
     const parsed = JSON.parse(response.text || "{}");
     const produitsRecommandes = availableProducts.filter((p) => parsed.produitIdsRecommandes?.includes(p.id));
@@ -441,27 +470,51 @@ ${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category:
     usage.count += 1;
     usageTracking.set(phone, usage);
 
-    res.json({
-      success: true,
-      result: {
-        zoneAnalysee: zone,
-        scoreGlobal: parsed.scoreGlobal,
-        typeDePeau: parsed.typeDePeau,
-        hydratation: parsed.hydratation,
-        uniformite: parsed.uniformite,
-        conditionsDetectees: parsed.conditionsDetectees || [],
-        explicationSimple: parsed.explicationSimple,
-        recommandationProfessionnel: parsed.recommandationProfessionnel,
-        raisonRecommandation: parsed.raisonRecommandation,
-        routineMatin: parsed.routineMatin || [],
-        routineSoir: parsed.routineSoir || [],
-        produitsRecommandes,
-        confiance: parsed.confiance,
-      },
-    });
+    const resultPayload = {
+      zoneAnalysee: zone,
+      scoreGlobal: parsed.scoreGlobal,
+      typeDePeau: parsed.typeDePeau,
+      hydratation: parsed.hydratation,
+      uniformite: parsed.uniformite,
+      conditionsDetectees: parsed.conditionsDetectees || [],
+      explicationSimple: parsed.explicationSimple,
+      recommandationProfessionnel: parsed.recommandationProfessionnel,
+      raisonRecommandation: parsed.raisonRecommandation,
+      routineMatin: parsed.routineMatin || [],
+      routineSoir: parsed.routineSoir || [],
+      produitsRecommandes,
+      confiance: parsed.confiance,
+    };
+
+    // Sauvegarde dans l'historique côté serveur (visible depuis n'importe quel appareil)
+    if (pool) {
+      pool.query(
+        "INSERT INTO analysis_history (phone, zone, result_json, created_at) VALUES ($1,$2,$3,$4)",
+        [phone, zone, JSON.stringify(resultPayload), Date.now()]
+      ).catch((err) => console.error("[DB] Échec sauvegarde historique:", err.message));
+    }
+
+    res.json({ success: true, result: resultPayload });
   } catch (err: any) {
     console.error("[SkinDiag Analyze] Erreur:", err.message);
     res.status(500).json({ success: false, message: "L'analyse a échoué. Réessayez dans un instant." });
+  }
+});
+
+app.get("/api/skindiag/history", requireAuth, async (req: any, res) => {
+  if (!pool) return res.json({ success: true, history: [] });
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, zone, result_json, created_at FROM analysis_history WHERE phone = $1 ORDER BY created_at DESC LIMIT 30",
+      [req.session.phone]
+    );
+    res.json({
+      success: true,
+      history: rows.map((r) => ({ id: r.id, zone: r.zone, createdAt: Number(r.created_at), ...r.result_json })),
+    });
+  } catch (err: any) {
+    console.error("[DB] Échec lecture historique:", err.message);
+    res.status(500).json({ success: false, message: "Impossible de charger l'historique." });
   }
 });
 
