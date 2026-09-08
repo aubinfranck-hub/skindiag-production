@@ -1,14 +1,16 @@
 import React, { useState } from "react";
-import { Scan, History, User, Sparkles } from "lucide-react";
+import { Scan, History, User, Sparkles, LogOut } from "lucide-react";
 import ZoneSelector from "./components/ZoneSelector";
 import PhotoCapture from "./components/PhotoCapture";
 import ResultsView from "./components/ResultsView";
+import LoginScreen from "./components/LoginScreen";
 import { SkinZone, SkinAnalysisResult } from "./types";
 
 type Tab = "diagnostic" | "historique" | "profil";
 type Step = "zone" | "capture" | "resultat";
 
 export default function App() {
+  const [sessionToken, setSessionToken] = useState<string | null>(() => localStorage.getItem("skindiag_token"));
   const [activeTab, setActiveTab] = useState<Tab>("diagnostic");
   const [step, setStep] = useState<Step>("zone");
   const [zone, setZone] = useState<SkinZone>("visage");
@@ -22,14 +24,31 @@ export default function App() {
     }
   });
 
+  const handleLoginSuccess = (token: string, _isAdmin: boolean) => {
+    localStorage.setItem("skindiag_token", token);
+    setSessionToken(token);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("skindiag_token");
+    setSessionToken(null);
+  };
+
   const handleAnalyze = async (base64: string, mimeType: string) => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/skindiag/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
         body: JSON.stringify({ zone, image: base64, mimeType }),
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         setResult(data.result);
@@ -51,6 +70,10 @@ export default function App() {
     setResult(null);
     setStep("zone");
   };
+
+  if (!sessionToken) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#140d0c] font-sans text-[#f5ede1] pb-24 lg:pb-0 lg:flex">
@@ -134,6 +157,12 @@ export default function App() {
               peaux noires et foncées. Cette analyse ne constitue pas un diagnostic médical et ne remplace
               pas la consultation d'un dermatologue.
             </div>
+            <button
+              onClick={handleLogout}
+              className="w-full mt-4 flex items-center justify-center gap-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-medium text-sm py-3 rounded-xl transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" /> Se déconnecter
+            </button>
           </div>
         )}
       </main>
