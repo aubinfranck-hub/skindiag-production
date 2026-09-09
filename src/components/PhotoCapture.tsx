@@ -12,7 +12,8 @@ interface PhotoCaptureProps {
 export default function PhotoCapture({ zone, onBack, onCapture, isLoading }: PhotoCaptureProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [pendingBase64, setPendingBase64] = useState<{ data: string; mime: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
     if (file.size > 15 * 1024 * 1024) {
@@ -49,23 +50,31 @@ export default function PhotoCapture({ zone, onBack, onCapture, isLoading }: Pho
         )}
 
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
           type="file"
           accept="image/*"
           capture="environment"
           className="hidden"
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         />
+        {/* Champ séparé, SANS l'attribut capture, pour ouvrir vraiment la galerie plutôt que la caméra */}
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => cameraInputRef.current?.click()}
             className="flex items-center justify-center gap-2 bg-[#2b1620]/[0.04] hover:bg-[#2b1620]/[0.06] border border-[#2b1620]/10 text-[#2b1620] font-medium text-sm py-3.5 rounded-xl transition cursor-pointer"
           >
             <Camera className="w-4 h-4" /> Prendre une photo
           </button>
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => galleryInputRef.current?.click()}
             className="flex items-center justify-center gap-2 bg-[#2b1620]/[0.04] hover:bg-[#2b1620]/[0.06] border border-[#2b1620]/10 text-[#2b1620] font-medium text-sm py-3.5 rounded-xl transition cursor-pointer"
           >
             <Upload className="w-4 h-4" /> Importer une photo
