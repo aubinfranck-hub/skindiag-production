@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Scan, History, User, Sparkles, LogOut, CreditCard, ShieldCheck } from "lucide-react";
+import { Scan, History, User, LogOut, CreditCard, ShieldCheck } from "lucide-react";
 import ZoneSelector from "./components/ZoneSelector";
 import ModeChoice from "./components/ModeChoice";
 import PhotoCapture from "./components/PhotoCapture";
@@ -141,9 +141,7 @@ export default function App() {
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:shrink-0 bg-white/70 backdrop-blur-sm border-r border-[#2b1620]/[0.07] min-h-screen p-6">
         <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d6407a] to-[#8a2a54] flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
+          <img src="/icon-192.png" alt="SkinDiag" className="w-10 h-10 rounded-xl object-cover" />
           <span className="font-display text-lg font-semibold">SkinDiag</span>
         </div>
         <nav className="space-y-1.5">
@@ -163,9 +161,7 @@ export default function App() {
 
       {/* Mobile header */}
       <header className="lg:hidden flex items-center gap-3 px-5 py-4 border-b border-[#2b1620]/[0.07]">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d6407a] to-[#8a2a54] flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-white" />
-        </div>
+        <img src="/icon-192.png" alt="SkinDiag" className="w-8 h-8 rounded-lg object-cover" />
         <span className="font-display text-base font-semibold">SkinDiag</span>
       </header>
 

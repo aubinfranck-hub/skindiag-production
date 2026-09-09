@@ -43,18 +43,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       <div className="glow-orb w-[360px] h-[360px] bg-[#d6407a]/20 bottom-[-100px] right-[-80px]" />
 
       <div className="w-full max-w-sm relative z-10">
-        <div className="text-center mb-8">
-          {/* Portrait réel en médaillon, ancré dans le sujet (peau, soin) plutôt qu'une icône abstraite */}
-          <div className="relative inline-flex items-center justify-center w-24 h-24 mb-4">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#f2a3c4] to-[#8a2a54] blur-lg opacity-60" />
-            <img
-              src="https://images.unsplash.com/photo-1693004927824-f2623bbedc8b?w=300&q=80&auto=format&fit=crop"
-              alt="SkinDiag"
-              className="relative w-20 h-20 rounded-full object-cover border-2 border-[#2b1620]/20 shadow-xl"
-            />
-          </div>
-          <h1 className="text-3xl font-display font-semibold text-[#2b1620] tracking-tight">SkinDiag</h1>
-          <p className="text-sm text-[#2b1620]/55 mt-1.5">Votre peau, comprise et accompagnée</p>
+        <div className="text-center mb-6">
+          {/* Vrai logo SkinDiag (avec wordmark intégré) */}
+          <img
+            src="/icon-512.png"
+            alt="SkinDiag — Analyse de la peau noire africaine"
+            className="w-40 h-40 mx-auto mb-2 drop-shadow-[0_10px_25px_rgba(214,64,122,0.25)]"
+          />
+          <p className="text-sm text-[#2b1620]/55">Votre peau, comprise et accompagnée</p>
         </div>
 
         <div className="premium-card rounded-[28px] p-7">
