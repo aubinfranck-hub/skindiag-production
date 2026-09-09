@@ -63,6 +63,7 @@ export interface Product {
   is_sponsored: boolean;
   is_partner: boolean;
   fragrance_free: boolean;
+  image_url: string;
   matchScore: number;
   actifsCorrespondants: string[];
 }

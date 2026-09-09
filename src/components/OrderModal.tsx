@@ -64,6 +64,9 @@ export default function OrderModal({ product, token, onClose }: OrderModalProps)
         ) : (
           <>
             <div className="flex items-center gap-3 bg-[#fdf1f5] rounded-2xl p-3 mb-4">
+              {product.image_url && (
+                <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-lg object-cover shrink-0 bg-white" />
+              )}
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-semibold text-[#2b1620] block">{product.name}</span>
                 <span className="text-xs text-[#2b1620]/50">{product.brand}</span>

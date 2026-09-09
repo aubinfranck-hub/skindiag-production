@@ -12,7 +12,11 @@ interface ResultsViewProps {
 function ProductCard({ product, highlighted, onOrder }: { product: Product; highlighted: boolean; onOrder: () => void }) {
   return (
     <div className={`rounded-2xl p-3.5 ${highlighted ? "bg-white border-2 border-[#d6407a]/30" : "bg-[#fdf1f5]"}`}>
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-3">
+        {product.image_url && (
+          <img src={product.image_url} alt={product.name} className="w-14 h-14 rounded-xl object-cover shrink-0 bg-white" />
+        )}
+        <div className="flex-1 min-w-0 flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {highlighted && <Star className="w-3.5 h-3.5 text-[#d6407a] fill-[#d6407a] shrink-0" />}
@@ -30,6 +34,7 @@ function ProductCard({ product, highlighted, onOrder }: { product: Product; high
         <div className="text-right shrink-0">
           <span className="text-sm font-bold text-[#d6407a] block">{product.price_fcfa.toLocaleString("fr-FR")} F</span>
           <span className="text-[10px] text-[#2b1620]/40">{product.matchScore}% correspondance</span>
+        </div>
         </div>
       </div>
       <button

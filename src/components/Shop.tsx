@@ -73,7 +73,11 @@ export default function Shop({ token }: { token: string }) {
         <div className="space-y-2.5">
           {sorted.map((p) => (
             <div key={p.id} className={`rounded-2xl p-3.5 ${p.is_sponsored ? "bg-white border-2 border-[#d6407a]/30" : "premium-card"}`}>
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-3">
+                {p.image_url && (
+                  <img src={p.image_url} alt={p.name} className="w-16 h-16 rounded-xl object-cover shrink-0 bg-white" />
+                )}
+                <div className="flex-1 min-w-0 flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     {p.is_sponsored && <Star className="w-3.5 h-3.5 text-[#d6407a] fill-[#d6407a] shrink-0" />}
@@ -91,6 +95,7 @@ export default function Shop({ token }: { token: string }) {
                   )}
                 </div>
                 <span className="text-sm font-bold text-[#d6407a] shrink-0">{p.price_fcfa.toLocaleString("fr-FR")} F</span>
+                </div>
               </div>
               <button
                 onClick={() => setOrderingProduct(p)}

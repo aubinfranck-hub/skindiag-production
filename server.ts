@@ -243,6 +243,7 @@ async function initDatabase(): Promise<void> {
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS is_sponsored BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS is_partner BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS fragrance_free BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '';
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -324,6 +325,21 @@ async function initDatabase(): Promise<void> {
       [name, actifsList, inci, sponsored, partner]
     );
   }
+  // Photo générique par catégorie (licence Unsplash gratuite) pour tout produit qui n'a pas
+  // encore de photo — appliqué à chaque redémarrage, donc couvre aussi les nouveaux produits.
+  const categoryPhotos: Record<string, string> = {
+    serum: "https://images.unsplash.com/photo-1576426863848-c21f53c60b19?w=500&q=80&auto=format&fit=crop",
+    moisturizer: "https://images.unsplash.com/photo-1609097164502-59a1f0f9a66f?w=500&q=80&auto=format&fit=crop",
+    cleanser: "https://images.unsplash.com/photo-1616750819456-5cdee9b85d22?w=500&q=80&auto=format&fit=crop",
+    sunscreen: "https://images.unsplash.com/photo-1597931752949-98c74b5b159f?w=500&q=80&auto=format&fit=crop",
+  };
+  for (const [cat, url] of Object.entries(categoryPhotos)) {
+    await pool.query(
+      "UPDATE beauty_products SET image_url = $1 WHERE category = $2 AND image_url = ''",
+      [url, cat]
+    );
+  }
+
   console.log("[DB] Produits vérifiés/migrés (actifs, composition, sponsoring).");
 }
 
@@ -714,16 +730,24 @@ app.get("/api/skindiag/products", async (req, res) => {
 
 app.post("/api/admin/products", requireAdminAuth, async (req, res) => {
   if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
-  const { name, brand, category, price_fcfa, actifs, inci_composition, is_sponsored, is_partner, fragrance_free, suitable_for } = req.body;
+  const { name, brand, category, price_fcfa, actifs, inci_composition, is_sponsored, is_partner, fragrance_free, suitable_for, image_url } = req.body;
   if (!name || !brand || !category || !price_fcfa) {
     return res.status(400).json({ success: false, message: "Nom, marque, catégorie et prix requis." });
   }
+  // Photo par défaut selon la catégorie si aucune URL fournie
+  const categoryPhotos: Record<string, string> = {
+    serum: "https://images.unsplash.com/photo-1576426863848-c21f53c60b19?w=500&q=80&auto=format&fit=crop",
+    moisturizer: "https://images.unsplash.com/photo-1609097164502-59a1f0f9a66f?w=500&q=80&auto=format&fit=crop",
+    cleanser: "https://images.unsplash.com/photo-1616750819456-5cdee9b85d22?w=500&q=80&auto=format&fit=crop",
+    sunscreen: "https://images.unsplash.com/photo-1597931752949-98c74b5b159f?w=500&q=80&auto=format&fit=crop",
+  };
+  const finalImageUrl = image_url || categoryPhotos[category] || "";
   try {
     await pool.query(
-      `INSERT INTO beauty_products (name, brand, category, price_fcfa, suitable_for, availability_abidjan, actifs, inci_composition, is_sponsored, is_partner, fragrance_free)
-       VALUES ($1,$2,$3,$4,$5,true,$6,$7,$8,$9,$10)
-       ON CONFLICT (name) DO UPDATE SET brand=$2, category=$3, price_fcfa=$4, suitable_for=$5, actifs=$6, inci_composition=$7, is_sponsored=$8, is_partner=$9, fragrance_free=$10`,
-      [name, brand, category, price_fcfa, suitable_for || ["all"], actifs || [], inci_composition || "", is_sponsored === true, is_partner === true, fragrance_free === true]
+      `INSERT INTO beauty_products (name, brand, category, price_fcfa, suitable_for, availability_abidjan, actifs, inci_composition, is_sponsored, is_partner, fragrance_free, image_url)
+       VALUES ($1,$2,$3,$4,$5,true,$6,$7,$8,$9,$10,$11)
+       ON CONFLICT (name) DO UPDATE SET brand=$2, category=$3, price_fcfa=$4, suitable_for=$5, actifs=$6, inci_composition=$7, is_sponsored=$8, is_partner=$9, fragrance_free=$10, image_url=$11`,
+      [name, brand, category, price_fcfa, suitable_for || ["all"], actifs || [], inci_composition || "", is_sponsored === true, is_partner === true, fragrance_free === true, finalImageUrl]
     );
     res.json({ success: true });
   } catch (err: any) {
