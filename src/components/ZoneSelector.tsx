@@ -9,11 +9,23 @@ interface ZoneSelectorProps {
 const ZONE_ORDER: SkinZone[] = ["visage", "cou", "bras", "avant_bras", "mains", "poitrine", "dos", "ventre", "jambes", "pieds"];
 
 // Deux teintes chaudes alternées plutôt qu'un accent unique répété identique sur chaque carte
-const ACCENTS = ["#c8663f", "#b8762e"];
+const ACCENTS = ["#e0578f", "#d6407a"];
 
 export default function ZoneSelector({ onSelect }: ZoneSelectorProps) {
   return (
     <div className="animate-fade-in">
+      {/* Bandeau de portraits réels — ancre visuelle dans le sujet (peaux noires et foncées) */}
+      <div className="grid grid-cols-4 gap-2 mb-5 rounded-2xl overflow-hidden">
+        {[
+          "https://images.unsplash.com/photo-1648203276014-20f97ba1f817?w=300&q=75&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1613876215075-276fd62c89a4?w=300&q=75&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1632765866070-3fadf25d3d5b?w=300&q=75&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1618509682637-e4790939cf96?w=300&q=75&auto=format&fit=crop",
+        ].map((src, i) => (
+          <img key={i} src={src} alt="Portrait" className="w-full h-20 sm:h-24 object-cover" />
+        ))}
+      </div>
+
       <h2 className="text-2xl font-display font-semibold text-[#f5ede1] mb-1.5">Quelle zone souhaitez-vous analyser ?</h2>
       <p className="text-sm text-[#f5ede1]/60 mb-6">Choisissez la zone de peau à examiner.</p>
 

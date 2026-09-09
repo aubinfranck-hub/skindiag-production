@@ -21,24 +21,24 @@ export default function ModeChoice({ zone, onBack, onChoose }: ModeChoiceProps) 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
           onClick={() => onChoose("photo")}
-          className="premium-card rounded-2xl p-6 text-left hover:border-[#b8762e]/40 hover:bg-white/[0.03] transition cursor-pointer group"
+          className="premium-card rounded-2xl p-6 text-left hover:border-[#d6407a]/40 hover:bg-white/[0.03] transition cursor-pointer group"
         >
-          <Camera className="w-7 h-7 text-[#b8762e] mb-3" />
+          <Camera className="w-7 h-7 text-[#d6407a] mb-3" />
           <h3 className="text-base font-semibold text-[#f5ede1] mb-1">Photo</h3>
           <p className="text-xs text-[#f5ede1]/50 leading-relaxed">Rapide, une seule image nette de la zone.</p>
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#e8a860] mt-4 group-hover:gap-2.5 transition-all">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#f28fb0] mt-4 group-hover:gap-2.5 transition-all">
             Continuer <ArrowRight className="w-3.5 h-3.5" />
           </div>
         </button>
 
         <button
           onClick={() => onChoose("video")}
-          className="premium-card rounded-2xl p-6 text-left hover:border-[#b8762e]/40 hover:bg-white/[0.03] transition cursor-pointer group"
+          className="premium-card rounded-2xl p-6 text-left hover:border-[#d6407a]/40 hover:bg-white/[0.03] transition cursor-pointer group"
         >
-          <Video className="w-7 h-7 text-[#b8762e] mb-3" />
+          <Video className="w-7 h-7 text-[#d6407a] mb-3" />
           <h3 className="text-base font-semibold text-[#f5ede1] mb-1">Vidéo</h3>
           <p className="text-xs text-[#f5ede1]/50 leading-relaxed">Un court clip (8s), pour un meilleur aperçu du relief et de la texture.</p>
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#e8a860] mt-4 group-hover:gap-2.5 transition-all">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#f28fb0] mt-4 group-hover:gap-2.5 transition-all">
             Continuer <ArrowRight className="w-3.5 h-3.5" />
           </div>
         </button>

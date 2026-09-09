@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sparkles, Phone, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Phone, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 interface LoginScreenProps {
   onLoginSuccess: (token: string, isAdmin: boolean) => void;
@@ -39,17 +39,19 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   return (
     <div className="min-h-screen flex items-center justify-center p-5 font-sans relative overflow-hidden">
       {/* Halos organiques — profondeur réelle plutôt qu'un aplat uni */}
-      <div className="glow-orb w-[420px] h-[420px] bg-[#c8663f]/25 -top-32 -left-24" />
-      <div className="glow-orb w-[360px] h-[360px] bg-[#b8762e]/20 bottom-[-100px] right-[-80px]" />
+      <div className="glow-orb w-[420px] h-[420px] bg-[#e0578f]/25 -top-32 -left-24" />
+      <div className="glow-orb w-[360px] h-[360px] bg-[#d6407a]/20 bottom-[-100px] right-[-80px]" />
 
       <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-8">
-          {/* Halo lumineux derrière le pictogramme, façon goutte de sérum, au lieu d'un badge carré plat */}
-          <div className="relative inline-flex items-center justify-center w-20 h-20 mb-4">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#d99457] to-[#8f5a20] blur-md opacity-70" />
-            <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-[#c8843f] to-[#8f5a20] flex items-center justify-center shadow-lg">
-              <Sparkles className="w-7 h-7 text-white" />
-            </div>
+          {/* Portrait réel en médaillon, ancré dans le sujet (peau, soin) plutôt qu'une icône abstraite */}
+          <div className="relative inline-flex items-center justify-center w-24 h-24 mb-4">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#f2a3c4] to-[#8a2a54] blur-lg opacity-60" />
+            <img
+              src="https://images.unsplash.com/photo-1693004927824-f2623bbedc8b?w=300&q=80&auto=format&fit=crop"
+              alt="SkinDiag"
+              className="relative w-20 h-20 rounded-full object-cover border-2 border-[#f5ede1]/20 shadow-xl"
+            />
           </div>
           <h1 className="text-3xl font-display font-semibold text-[#f5ede1] tracking-tight">SkinDiag</h1>
           <p className="text-sm text-[#f5ede1]/55 mt-1.5">Votre peau, comprise et accompagnée</p>
@@ -64,7 +66,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <select
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
-                className="bg-black/30 border border-white/10 rounded-xl px-2 py-3 text-sm text-[#f5ede1] focus:outline-none focus:border-[#b8762e]"
+                className="bg-black/30 border border-white/10 rounded-xl px-2 py-3 text-sm text-[#f5ede1] focus:outline-none focus:border-[#d6407a]"
               >
                 <option value="+225">+225</option>
                 <option value="+221">+221</option>
@@ -78,7 +80,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   placeholder="07 12 34 56"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-3 py-3 text-sm text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#b8762e]"
+                  className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-3 py-3 text-sm text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#d6407a]"
                 />
               </div>
             </div>
@@ -94,7 +96,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 placeholder="Votre mot de passe"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-10 py-3 text-sm text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#b8762e]"
+                className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-10 py-3 text-sm text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#d6407a]"
               />
               <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#f5ede1]/40 hover:text-[#f5ede1] cursor-pointer">
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -107,7 +109,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#b8762e] to-[#8f5a20] disabled:opacity-50 text-white font-semibold text-sm py-3.5 rounded-xl transition cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-50 text-white font-semibold text-sm py-3.5 rounded-xl transition cursor-pointer"
           >
             {loading ? "Connexion..." : <>Se connecter <ArrowRight className="w-4 h-4" /></>}
           </button>

@@ -136,12 +136,12 @@ export default function App() {
   return (
     <div className="min-h-screen font-sans text-[#f5ede1] pb-24 lg:pb-0 lg:flex relative">
       {/* Halos organiques fixes, cohérents avec l'écran de connexion */}
-      <div className="glow-orb w-[380px] h-[380px] bg-[#c8663f]/15 -top-40 right-[-100px] fixed" />
-      <div className="glow-orb w-[320px] h-[320px] bg-[#b8762e]/12 bottom-[-80px] left-[-80px] fixed" />
+      <div className="glow-orb w-[380px] h-[380px] bg-[#e0578f]/15 -top-40 right-[-100px] fixed" />
+      <div className="glow-orb w-[320px] h-[320px] bg-[#d6407a]/12 bottom-[-80px] left-[-80px] fixed" />
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:shrink-0 bg-black/30 border-r border-white/[0.06] min-h-screen p-6">
         <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#b8762e] to-[#8f5a20] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d6407a] to-[#8a2a54] flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <span className="font-display text-lg font-semibold">SkinDiag</span>
@@ -152,7 +152,7 @@ export default function App() {
               key={t.id}
               onClick={() => setActiveTab(t.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition cursor-pointer ${
-                activeTab === t.id ? "bg-[#b8762e]/15 text-[#e8a860]" : "text-[#f5ede1]/60 hover:bg-white/[0.03]"
+                activeTab === t.id ? "bg-[#d6407a]/15 text-[#f28fb0]" : "text-[#f5ede1]/60 hover:bg-white/[0.03]"
               }`}
             >
               <t.icon className="w-4.5 h-4.5" /> {t.label}
@@ -163,7 +163,7 @@ export default function App() {
 
       {/* Mobile header */}
       <header className="lg:hidden flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#b8762e] to-[#8f5a20] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d6407a] to-[#8a2a54] flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
         <span className="font-display text-base font-semibold">SkinDiag</span>
@@ -210,7 +210,7 @@ export default function App() {
                       <span className="text-sm font-medium">{h.zoneAnalysee}</span>
                       <p className="text-xs text-[#f5ede1]/50">{h.typeDePeau}</p>
                     </div>
-                    <span className="text-lg font-bold text-[#b8762e]">{h.scoreGlobal}</span>
+                    <span className="text-lg font-bold text-[#d6407a]">{h.scoreGlobal}</span>
                   </div>
                 ))}
               </div>
@@ -257,7 +257,7 @@ export default function App() {
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition cursor-pointer ${
-              activeTab === t.id ? "bg-white/[0.06] text-[#e8a860]" : "text-[#f5ede1]/50"
+              activeTab === t.id ? "bg-white/[0.06] text-[#f28fb0]" : "text-[#f5ede1]/50"
             }`}
           >
             <t.icon className="w-5 h-5" />

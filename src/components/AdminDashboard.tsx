@@ -113,11 +113,11 @@ export default function AdminDashboard({ token }: { token: string }) {
           <input
             type="tel" required placeholder="+225 07 12 34 56"
             value={phone} onChange={(e) => setPhone(e.target.value)}
-            className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#b8762e] font-mono"
+            className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#d6407a] font-mono"
           />
           <select
             value={plan} onChange={(e) => setPlan(e.target.value)}
-            className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-[#f5ede1] focus:outline-none focus:border-[#b8762e]"
+            className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-[#f5ede1] focus:outline-none focus:border-[#d6407a]"
           >
             <option value="free_trial">Essai gratuit</option>
             <option value="payg_day">Pass Jour</option>
@@ -126,7 +126,7 @@ export default function AdminDashboard({ token }: { token: string }) {
           </select>
           <button
             type="submit" disabled={creating}
-            className="sm:col-span-2 bg-gradient-to-r from-[#b8762e] to-[#8f5a20] disabled:opacity-50 text-white font-semibold text-xs py-2.5 rounded-xl transition cursor-pointer"
+            className="sm:col-span-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-50 text-white font-semibold text-xs py-2.5 rounded-xl transition cursor-pointer"
           >
             {creating ? "Création..." : "Créer le compte (mot de passe généré)"}
           </button>
@@ -181,7 +181,7 @@ export default function AdminDashboard({ token }: { token: string }) {
             <div key={a.phone} className="flex items-center justify-between text-xs py-2 border-b border-white/5">
               <span className="font-mono text-[#f5ede1]">{a.phone}</span>
               <div className="flex items-center gap-2">
-                {a.isAdmin && <span className="text-[9px] font-bold uppercase bg-[#b8762e]/20 text-[#e8a860] px-1.5 py-0.5 rounded">Admin</span>}
+                {a.isAdmin && <span className="text-[9px] font-bold uppercase bg-[#d6407a]/20 text-[#f28fb0] px-1.5 py-0.5 rounded">Admin</span>}
                 <span className="text-[#f5ede1]/50">{PLAN_LABELS[a.plan] || a.plan}</span>
               </div>
             </div>

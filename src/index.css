@@ -8,7 +8,7 @@
 
   /* Palette premium beauté : ivoire/beige chaud + accent doré/bronze, pensée pour peaux foncées —
      volontairement différente de l'univers automobile rouge/noir de DiagAssist. */
-  --color-brand-primary: #b8762e;  /* bronze/doré chaud */
+  --color-brand-primary: #d6407a;  /* bronze/doré chaud */
   --color-brand-dark: #1a1210;     /* brun très foncé, pas un noir pur */
   --color-brand-cream: #f5ede1;    /* ivoire chaud */
 }
@@ -21,9 +21,9 @@
 
 body {
   background:
-    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(184,118,46,0.22), transparent 60%),
-    radial-gradient(ellipse 700px 700px at 100% 20%, rgba(200,90,70,0.14), transparent 55%),
-    radial-gradient(ellipse 800px 900px at 50% 120%, rgba(120,70,40,0.20), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(214,64,122,0.22), transparent 60%),
+    radial-gradient(ellipse 700px 700px at 100% 20%, rgba(224,87,143,0.16), transparent 55%),
+    radial-gradient(ellipse 800px 900px at 50% 120%, rgba(138,42,84,0.22), transparent 60%),
     #150e0c;
   background-attachment: fixed;
   color: #f5ede1;

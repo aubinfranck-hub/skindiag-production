@@ -20,7 +20,7 @@ export default function ResultsView({ result, onRestart }: ResultsViewProps) {
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
             <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(245,237,225,0.1)" strokeWidth="10" />
             <circle
-              cx="50" cy="50" r="42" fill="none" stroke="#b8762e" strokeWidth="10"
+              cx="50" cy="50" r="42" fill="none" stroke="#d6407a" strokeWidth="10"
               strokeDasharray={`${(result.scoreGlobal / 100) * 264} 264`}
               strokeLinecap="round"
             />
@@ -85,7 +85,7 @@ export default function ResultsView({ result, onRestart }: ResultsViewProps) {
           <ol className="space-y-1.5">
             {result.routineMatin.map((step, i) => (
               <li key={i} className="text-xs text-[#f5ede1]/80 flex gap-2">
-                <span className="text-[#b8762e] font-bold">{i + 1}.</span> {step}
+                <span className="text-[#d6407a] font-bold">{i + 1}.</span> {step}
               </li>
             ))}
           </ol>
@@ -97,7 +97,7 @@ export default function ResultsView({ result, onRestart }: ResultsViewProps) {
           <ol className="space-y-1.5">
             {result.routineSoir.map((step, i) => (
               <li key={i} className="text-xs text-[#f5ede1]/80 flex gap-2">
-                <span className="text-[#b8762e] font-bold">{i + 1}.</span> {step}
+                <span className="text-[#d6407a] font-bold">{i + 1}.</span> {step}
               </li>
             ))}
           </ol>
@@ -117,7 +117,7 @@ export default function ResultsView({ result, onRestart }: ResultsViewProps) {
                   <span className="text-sm text-[#f5ede1] font-medium">{p.name}</span>
                   <p className="text-[11px] text-[#f5ede1]/50">{p.brand} · {p.category}</p>
                 </div>
-                <span className="text-sm font-bold text-[#b8762e] shrink-0">{p.price_fcfa.toLocaleString("fr-FR")} F</span>
+                <span className="text-sm font-bold text-[#d6407a] shrink-0">{p.price_fcfa.toLocaleString("fr-FR")} F</span>
               </div>
             ))}
           </div>

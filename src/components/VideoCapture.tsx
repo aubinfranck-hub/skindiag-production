@@ -197,7 +197,7 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
       <button
         onClick={() => pending && onCapture(pending.data, pending.mime)}
         disabled={!pending || isLoading}
-        className="w-full mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-[#b8762e] to-[#8f5a20] disabled:opacity-40 text-white font-semibold text-sm py-4 rounded-2xl transition cursor-pointer"
+        className="w-full mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-40 text-white font-semibold text-sm py-4 rounded-2xl transition cursor-pointer"
       >
         {isLoading ? "Analyse en cours..." : <><Sparkles className="w-4 h-4" /> Analyser cette vidéo</>}
       </button>
