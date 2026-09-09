@@ -469,17 +469,25 @@ app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req: any, 
     const systemInstruction = `Tu es SkinDiag, le moteur d'analyse visuelle de la peau spécialement conçu et calibré pour les peaux noires et foncées.
 
 ═══ ÉTAPE 1 — CONTRÔLE QUALITÉ DE L'IMAGE (OBLIGATOIRE, AVANT TOUTE ANALYSE) ═══
-Tu ne dois JAMAIS analyser une image de mauvaise qualité. Vérifie : éclairage insuffisant, image trop sombre, surexposition, flash direct/reflets, contraste excessif, flou, mouvement, zone de peau insuffisamment visible, distance trop importante, mauvaise mise au point, obstruction (vêtements/cheveux/bijoux), filtre ou retouche artificielle, compression excessive, teinte de peau manifestement altérée par l'éclairage.
-Si l'image ne permet pas une analyse fiable : remplis UNIQUEMENT "qualiteImage" (acceptable=false, score bas, problemes listés, message clair demandant de reprendre la photo) et laisse tous les autres champs à leurs valeurs vides/nulles par défaut (scoreGlobal=0, tableaux vides, "analyseConcluante"=false). Ne fabrique JAMAIS d'observation sur une image inexploitable.
+Vérifie : luminosité (trop sombre/correcte/trop claire), exposition, netteté (flou/mouvement/mise au point), reflets (flash/huile/transpiration), dominante de couleur (balance des blancs), cadrage (zone insuffisamment visible, distance excessive, obstruction), filtre/retouche artificielle, compression excessive.
+Classe la photo dans "decision" selon 3 niveaux, jamais binaire :
+- "A_excellente" : analyse fiable possible sans réserve.
+- "B_exploitable_imparfaite" : analyse possible mais fiabilité réduite — précise dans "message" ce qui limite la fiabilité (ex: légère sous-exposition), et baisse en conséquence "confianceImage". Tu PEUX analyser, mais dis-le clairement.
+- "C_insuffisante" : analyse impossible. Remplis UNIQUEMENT "qualiteImage" (decision=C_insuffisante, score bas, problemes listés, message clair demandant de reprendre la photo) et laisse tous les autres champs à leurs valeurs vides/nulles par défaut (scoreGlobal=0, tableaux vides, "analyseConcluante"=false). Ne fabrique JAMAIS d'observation sur une image inexploitable.
 
 ═══ RÈGLE PEAU NOIRE/FONCÉE ═══
 Adapte-toi aux nuances de peau foncée — hyperpigmentation, hypopigmentation, marques post-inflammatoires. L'ABSENCE de rougeur visible ne signifie PAS l'absence d'inflammation sur peau noire : base-toi sur plusieurs indices (texture, relief, brillance, desquamation), jamais uniquement la couleur rouge.
+Pour "profilTeinte", NE réduis JAMAIS la couleur de peau à une classification raciale ou à Fitzpatrick seul — utilise l'échelle purement colorimétrique fournie (très_clair, clair, brun_clair, brun_moyen, brun_fonce, tres_fonce), fondée uniquement sur ce que tu observes dans l'image.
 
 ═══ ÉTAPE 2 — 3 NIVEAUX DE RÉSULTAT (JAMAIS DE PSEUDO-DIAGNOSTIC) ═══
 Niveau 1 "observation" : ce que tu vois factuellement, sans interprétation ("zone présentant une pigmentation plus foncée que les zones voisines").
 Niveau 2 "hypothesesCompatibles" : liste de causes possibles compatibles avec l'observation (jamais une certitude, toujours plusieurs pistes si pertinent).
 Niveau 3 "orientation" : recommandation de consulter un professionnel si signes inhabituels (saignement, douleur, évolution rapide, ulcération, lésion inquiétante) — "recommandationProfessionnel" à true dans ce cas.
 Si les caractéristiques observées ne permettent PAS de conclure clairement : mets "analyseConcluante" à false et explique pourquoi dans "explicationSimple" (qualité insuffisante, caractéristiques ambiguës) plutôt que d'inventer une conclusion. Tu as le droit de dire "je ne sais pas".
+
+DEUX SCORES DE CONFIANCE DISTINCTS, NE JAMAIS LES CONFONDRE :
+- "confianceImage" (0-100) : à quel point la PHOTO elle-même est exploitable techniquement (netteté, éclairage, cadrage) — indépendant de ce qui est observé.
+- "confianceMotifClinique" (0-100) : à quel point le MOTIF visuel observé est net et cohérent avec les hypothèses proposées. Ce n'est PAS "probabilité d'avoir telle maladie" — seulement la clarté du motif visuel compatible avec l'hypothèse. Une confiance basse ici doit se refléter dans "analyseConcluante"=false si trop faible pour conclure.
 
 ═══ ÉTAPE 3 — BESOINS CUTANÉS AVANT TOUT PRODUIT ═══
 Ne recommande JAMAIS un produit directement. Le raisonnement est TOUJOURS : observation → besoin cutané (ex: "hydratation", "uniformité du teint", "apaisement", "protection barrière") → actifs pertinents pour ce besoin (parmi : vitamine_c, niacinamide, acide_hyaluronique, ceramides, glycerine, acide_azelaique, beurre_de_karite, protection_solaire, retinoides, uree) → PUIS uniquement les produits de la liste ci-dessous qui contiennent réellement ces actifs. Remplis "besoinsIdentifies" (besoin + priorité) et "actifsRecherches" (liste des codes actifs, doit correspondre exactement aux valeurs possibles listées) — le serveur fera lui-même le matching produit par composition, ne choisis pas les produits toi-même.
@@ -519,16 +527,18 @@ Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
             qualiteImage: {
               type: Type.OBJECT,
               properties: {
+                decision: { type: Type.STRING, enum: ["A_excellente", "B_exploitable_imparfaite", "C_insuffisante"] },
                 acceptable: { type: Type.BOOLEAN },
                 score: { type: Type.INTEGER },
                 problemes: { type: Type.ARRAY, items: { type: Type.STRING } },
                 message: { type: Type.STRING },
               },
-              required: ["acceptable", "score", "problemes", "message"],
+              required: ["decision", "acceptable", "score", "problemes", "message"],
             },
             analyseConcluante: { type: Type.BOOLEAN },
             scoreGlobal: { type: Type.INTEGER },
             typeDePeau: { type: Type.STRING },
+            profilTeinte: { type: Type.STRING, enum: ["tres_clair", "clair", "brun_clair", "brun_moyen", "brun_fonce", "tres_fonce"] },
             hydratation: { type: Type.STRING, enum: ["faible", "moyenne", "bonne"] },
             uniformite: { type: Type.STRING, enum: ["faible", "moyenne", "bonne"] },
             observation: { type: Type.STRING },
@@ -562,9 +572,10 @@ Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
             actifsRecherches: { type: Type.ARRAY, items: { type: Type.STRING, enum: actifsEnum } },
             routineMatin: { type: Type.ARRAY, items: { type: Type.STRING } },
             routineSoir: { type: Type.ARRAY, items: { type: Type.STRING } },
-            confiance: { type: Type.INTEGER },
+            confianceImage: { type: Type.INTEGER },
+            confianceMotifClinique: { type: Type.INTEGER },
           },
-          required: ["qualiteImage", "analyseConcluante", "scoreGlobal", "typeDePeau", "hydratation", "uniformite", "observation", "hypothesesCompatibles", "conditionsDetectees", "explicationSimple", "recommandationProfessionnel", "besoinsIdentifies", "actifsRecherches", "routineMatin", "routineSoir", "confiance"],
+          required: ["qualiteImage", "analyseConcluante", "scoreGlobal", "typeDePeau", "profilTeinte", "hydratation", "uniformite", "observation", "hypothesesCompatibles", "conditionsDetectees", "explicationSimple", "recommandationProfessionnel", "besoinsIdentifies", "actifsRecherches", "routineMatin", "routineSoir", "confianceImage", "confianceMotifClinique"],
         },
       },
     }));
@@ -573,7 +584,7 @@ Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
 
     // Photo/vidéo de mauvaise qualité : on s'arrête ici, aucune analyse fabriquée, pas de
     // décompte du quota (on ne pénalise pas l'utilisateur pour une photo à reprendre).
-    if (parsed.qualiteImage && parsed.qualiteImage.acceptable === false) {
+    if (parsed.qualiteImage && (parsed.qualiteImage.decision === "C_insuffisante" || parsed.qualiteImage.acceptable === false)) {
       return res.json({
         success: true,
         qualityRejected: true,
@@ -604,9 +615,11 @@ Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
 
     const resultPayload = {
       zoneAnalysee: zone,
+      qualiteImage: parsed.qualiteImage,
       analyseConcluante: parsed.analyseConcluante,
       scoreGlobal: parsed.scoreGlobal,
       typeDePeau: parsed.typeDePeau,
+      profilTeinte: parsed.profilTeinte,
       hydratation: parsed.hydratation,
       uniformite: parsed.uniformite,
       observation: parsed.observation,
@@ -621,7 +634,8 @@ Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
       routineSoir: parsed.routineSoir || [],
       produitsPartenaires,
       autresProduits,
-      confiance: parsed.confiance,
+      confianceImage: parsed.confianceImage,
+      confianceMotifClinique: parsed.confianceMotifClinique,
     };
 
     // Sauvegarde dans l'historique côté serveur (visible depuis n'importe quel appareil)

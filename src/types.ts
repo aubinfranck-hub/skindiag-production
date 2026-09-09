@@ -72,7 +72,17 @@ export interface BesoinIdentifie {
   priorite: "principal" | "secondaire";
 }
 
+export const SKIN_TONE_LABELS: Record<string, string> = {
+  tres_clair: "Très clair",
+  clair: "Clair",
+  brun_clair: "Brun clair",
+  brun_moyen: "Brun moyen",
+  brun_fonce: "Brun foncé",
+  tres_fonce: "Très foncé",
+};
+
 export interface QualiteImage {
+  decision: "A_excellente" | "B_exploitable_imparfaite" | "C_insuffisante";
   acceptable: boolean;
   score: number;
   problemes: string[];
@@ -81,9 +91,11 @@ export interface QualiteImage {
 
 export interface SkinAnalysisResult {
   zoneAnalysee: string;
+  qualiteImage: QualiteImage;
   analyseConcluante: boolean;
   scoreGlobal: number; // 0-100
   typeDePeau: string;
+  profilTeinte: string;
   hydratation: "faible" | "moyenne" | "bonne";
   uniformite: "faible" | "moyenne" | "bonne";
   observation: string;
@@ -98,5 +110,6 @@ export interface SkinAnalysisResult {
   routineSoir: string[];
   produitsPartenaires: Product[];
   autresProduits: Product[];
-  confiance: number; // 0-100
+  confianceImage: number; // 0-100
+  confianceMotifClinique: number; // 0-100
 }

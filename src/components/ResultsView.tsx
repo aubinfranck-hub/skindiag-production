@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ArrowLeft, AlertTriangle, Sun, Moon, ShoppingBag, ShieldCheck, HelpCircle, Star, Sparkles } from "lucide-react";
-import { SkinAnalysisResult, Product, ACTIF_LABELS } from "../types";
+import { SkinAnalysisResult, Product, ACTIF_LABELS, SKIN_TONE_LABELS } from "../types";
 import OrderModal from "./OrderModal";
 
 interface ResultsViewProps {
@@ -77,10 +77,16 @@ export default function ResultsView({ result, token, onRestart }: ResultsViewPro
             </div>
             <div>
               <span className="text-xs uppercase tracking-wider text-[#2b1620]/50 font-medium">Score — {result.zoneAnalysee}</span>
-              <p className="text-sm text-[#2b1620] mt-1">Type de peau : <strong>{result.typeDePeau}</strong></p>
-              <p className="text-xs text-[#2b1620]/60 mt-0.5">Confiance : {result.confiance}%</p>
+              <p className="text-sm text-[#2b1620] mt-1">Type de peau : <strong>{result.typeDePeau}</strong> · {SKIN_TONE_LABELS[result.profilTeinte] || result.profilTeinte}</p>
+              <p className="text-xs text-[#2b1620]/60 mt-0.5">Confiance image : {result.confianceImage}% · Confiance du motif clinique : {result.confianceMotifClinique}%</p>
             </div>
           </div>
+
+          {result.qualiteImage?.decision === "B_exploitable_imparfaite" && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3.5 mb-4 text-xs text-blue-700">
+              <strong>Fiabilité réduite :</strong> {result.qualiteImage.message}
+            </div>
+          )}
 
           {result.recommandationProfessionnel && (
             <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-4 flex items-start gap-3">
