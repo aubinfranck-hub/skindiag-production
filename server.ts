@@ -273,7 +273,8 @@ async function initDatabase(): Promise<void> {
 }
 
 app.use(cors());
-app.use(express.json({ limit: "15mb" }));
+// Limite augmentée pour accepter les courtes vidéos (mode capture vidéo), pas seulement les photos
+app.use(express.json({ limit: "40mb" }));
 
 const analyzeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 
@@ -409,13 +410,17 @@ app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req: any, 
       availableProducts = rows;
     }
 
+    const isVideo = mimeType.startsWith("video/");
     const systemInstruction = `Tu es SkinDiag, un assistant d'analyse visuelle de la peau spécialement conçu et calibré pour les peaux noires et foncées.
 
 RÈGLE FONDAMENTALE : ton analyse doit être adaptée aux nuances de peau foncée — hyperpigmentation, hypopigmentation, marques post-inflammatoires, variations naturelles de pigmentation. Ne base jamais ton analyse sur des références pensées pour peaux claires.
 
 TU N'ES PAS UN MÉDECIN. Tu fournis une analyse visuelle indicative uniquement, jamais un diagnostic médical. Si tu observes quelque chose qui pourrait nécessiter un avis médical (lésion suspecte, inflammation sévère, changement rapide), recommande explicitement de consulter un dermatologue.
 
-Analyse la photo de la zone "${zone}" fournie et réponds en JSON structuré selon le schéma. Sois bienveillant, précis, et jamais alarmiste sans raison.
+${isVideo
+  ? `Une COURTE VIDÉO de la zone "${zone}" t'est fournie (pas une simple photo). Observe-la sur toute sa durée : la vidéo permet de mieux juger le relief, la texture et l'éclairage sous plusieurs angles qu'une photo fixe. Si l'éclairage ou le cadrage varie trop au cours de la vidéo pour juger correctement, dis-le explicitement dans "explicationSimple" plutôt que d'inventer une conclusion.`
+  : `Une PHOTO de la zone "${zone}" t'est fournie.`}
+Réponds en JSON structuré selon le schéma. Sois bienveillant, précis, et jamais alarmiste sans raison.
 
 Produits disponibles à recommander (uniquement ceux réellement pertinents pour ce que tu observes) :
 ${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category: p.category, suitable_for: p.suitable_for })))}`;
@@ -425,7 +430,7 @@ ${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category:
       contents: {
         parts: [
           { inlineData: { data: image, mimeType } },
-          { text: `Analyse cette photo de la zone : ${zone}.` },
+          { text: `Analyse cette ${isVideo ? "vidéo" : "photo"} de la zone : ${zone}.` },
         ],
       },
       config: {

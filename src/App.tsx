@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Scan, History, User, Sparkles, LogOut, CreditCard, ShieldCheck } from "lucide-react";
 import ZoneSelector from "./components/ZoneSelector";
+import ModeChoice from "./components/ModeChoice";
 import PhotoCapture from "./components/PhotoCapture";
+import VideoCapture from "./components/VideoCapture";
 import ResultsView from "./components/ResultsView";
 import LoginScreen from "./components/LoginScreen";
 import SubscriptionPanel from "./components/SubscriptionPanel";
@@ -9,7 +11,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import { SkinZone, SkinAnalysisResult } from "./types";
 
 type Tab = "diagnostic" | "historique" | "abonnement" | "admin" | "profil";
-type Step = "zone" | "capture" | "resultat";
+type Step = "zone" | "mode" | "capture" | "resultat";
 
 interface UserStatus {
   isAdmin: boolean;
@@ -23,6 +25,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("diagnostic");
   const [step, setStep] = useState<Step>("zone");
   const [zone, setZone] = useState<SkinZone>("visage");
+  const [captureMode, setCaptureMode] = useState<"photo" | "video">("photo");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<SkinAnalysisResult | null>(null);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
@@ -173,9 +176,19 @@ export default function App() {
 
         {activeTab === "diagnostic" && (
           <>
-            {step === "zone" && <ZoneSelector onSelect={(z) => { setZone(z); setStep("capture"); }} />}
-            {step === "capture" && (
-              <PhotoCapture zone={zone} onBack={() => setStep("zone")} onCapture={handleAnalyze} isLoading={isLoading} />
+            {step === "zone" && <ZoneSelector onSelect={(z) => { setZone(z); setStep("mode"); }} />}
+            {step === "mode" && (
+              <ModeChoice
+                zone={zone}
+                onBack={() => setStep("zone")}
+                onChoose={(m) => { setCaptureMode(m); setStep("capture"); }}
+              />
+            )}
+            {step === "capture" && captureMode === "photo" && (
+              <PhotoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleAnalyze} isLoading={isLoading} />
+            )}
+            {step === "capture" && captureMode === "video" && (
+              <VideoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleAnalyze} isLoading={isLoading} />
             )}
             {step === "resultat" && result && <ResultsView result={result} onRestart={restart} />}
           </>
