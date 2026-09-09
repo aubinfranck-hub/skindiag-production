@@ -18,7 +18,7 @@ function StarRating({ avg, count }: { avg: number; count: number }) {
           <Star key={i} className={`w-3 h-3 ${i <= Math.round(avg) ? "fill-amber-400 text-amber-400" : "text-[#2b1620]/15"}`} />
         ))}
       </div>
-      <span className="text-[10px] text-[#2b1620]/40">{avg} ({count})</span>
+      <span className="text-xs text-[#2b1620]/50">{avg} ({count})</span>
     </div>
   );
 }
@@ -36,23 +36,23 @@ function ProductTile({ product, onOrder }: { product: Product; onOrder: () => vo
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 {product.is_sponsored && <Star className="w-3 h-3 text-[#d6407a] fill-[#d6407a] shrink-0" />}
-                {product.is_new && <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full shrink-0">NOUVEAU</span>}
-                <span className="text-sm font-semibold text-[#2b1620] truncate">{product.name}</span>
+                {product.is_new && <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full shrink-0">NOUVEAU</span>}
+                <span className="text-base font-semibold text-[#2b1620] truncate">{product.name}</span>
               </div>
-              <span className="text-[11px] text-[#2b1620]/50">{product.brand} · {CATEGORY_LABELS[product.category] || product.category}</span>
+              <span className="text-xs text-[#2b1620]/60">{product.brand} · {CATEGORY_LABELS[product.category] || product.category}</span>
               <StarRating avg={product.rating_avg} count={product.rating_count} />
             </div>
             <div className="text-right shrink-0">
               {hasPromo && (
-                <span className="text-[11px] text-[#2b1620]/35 line-through block">{product.original_price_fcfa!.toLocaleString("fr-FR")} F</span>
+                <span className="text-sm text-[#2b1620]/40 line-through block">{product.original_price_fcfa!.toLocaleString("fr-FR")} F</span>
               )}
-              <span className={`text-sm font-bold block ${hasPromo ? "text-rose-600" : "text-[#d6407a]"}`}>{product.price_fcfa.toLocaleString("fr-FR")} F</span>
+              <span className={`text-base font-bold block ${hasPromo ? "text-rose-600" : "text-[#d6407a]"}`}>{product.price_fcfa.toLocaleString("fr-FR")} F</span>
             </div>
           </div>
           {product.actifs?.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {product.actifs.map((a) => (
-                <span key={a} className="text-[9px] bg-[#fdf1f5] border border-[#d6407a]/20 text-[#d6407a] px-1.5 py-0.5 rounded-full">
+                <span key={a} className="text-[11px] bg-[#fdf1f5] border border-[#d6407a]/20 text-[#d6407a] px-1.5 py-0.5 rounded-full">
                   {ACTIF_LABELS[a] || a}
                 </span>
               ))}
@@ -106,15 +106,15 @@ export default function Shop({ token }: { token: string }) {
       <div className="grid grid-cols-3 gap-2 mb-5">
         <div className="premium-card rounded-xl p-2.5 text-center">
           <Truck className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
-          <span className="text-[9px] text-[#2b1620]/60 font-medium leading-tight block">Livraison à Abidjan</span>
+          <span className="text-[11px] text-[#2b1620]/70 font-medium leading-tight block">Livraison à Abidjan</span>
         </div>
         <div className="premium-card rounded-xl p-2.5 text-center">
           <Wallet className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
-          <span className="text-[9px] text-[#2b1620]/60 font-medium leading-tight block">Paiement à la livraison</span>
+          <span className="text-[11px] text-[#2b1620]/70 font-medium leading-tight block">Paiement à la livraison</span>
         </div>
         <a href="https://wa.me/2250757854307" target="_blank" rel="noopener noreferrer" className="premium-card rounded-xl p-2.5 text-center hover:-translate-y-0.5 transition">
           <MessageCircle className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
-          <span className="text-[9px] text-[#2b1620]/60 font-medium leading-tight block">Service client WhatsApp</span>
+          <span className="text-[11px] text-[#2b1620]/70 font-medium leading-tight block">Service client WhatsApp</span>
         </a>
       </div>
 
