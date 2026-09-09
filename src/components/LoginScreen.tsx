@@ -37,15 +37,25 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#140d0c] flex items-center justify-center p-5 font-sans">
-      <div className="w-full max-w-sm premium-card rounded-3xl p-7">
-        <div className="text-center mb-7">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#b8762e] to-[#8f5a20] mb-3">
-            <Sparkles className="w-6 h-6 text-white" />
+    <div className="min-h-screen flex items-center justify-center p-5 font-sans relative overflow-hidden">
+      {/* Halos organiques — profondeur réelle plutôt qu'un aplat uni */}
+      <div className="glow-orb w-[420px] h-[420px] bg-[#c8663f]/25 -top-32 -left-24" />
+      <div className="glow-orb w-[360px] h-[360px] bg-[#b8762e]/20 bottom-[-100px] right-[-80px]" />
+
+      <div className="w-full max-w-sm relative z-10">
+        <div className="text-center mb-8">
+          {/* Halo lumineux derrière le pictogramme, façon goutte de sérum, au lieu d'un badge carré plat */}
+          <div className="relative inline-flex items-center justify-center w-20 h-20 mb-4">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#d99457] to-[#8f5a20] blur-md opacity-70" />
+            <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-[#c8843f] to-[#8f5a20] flex items-center justify-center shadow-lg">
+              <Sparkles className="w-7 h-7 text-white" />
+            </div>
           </div>
-          <h1 className="text-xl font-display font-semibold text-[#f5ede1]">SkinDiag</h1>
-          <p className="text-xs text-[#f5ede1]/50 mt-1">Analyse de peau intelligente</p>
+          <h1 className="text-3xl font-display font-semibold text-[#f5ede1] tracking-tight">SkinDiag</h1>
+          <p className="text-sm text-[#f5ede1]/55 mt-1.5">Votre peau, comprise et accompagnée</p>
         </div>
+
+        <div className="premium-card rounded-[28px] p-7">
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -106,6 +116,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         <p className="text-[11px] text-[#f5ede1]/40 text-center mt-5">
           Pas de compte ? Contactez-nous pour en créer un.
         </p>
+        </div>
       </div>
     </div>
   );

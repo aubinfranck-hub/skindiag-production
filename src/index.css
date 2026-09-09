@@ -20,11 +20,42 @@
 .animate-fade-in { animation: fadeIn 0.4s ease-out; }
 
 body {
-  background: #140d0c;
+  background:
+    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(184,118,46,0.22), transparent 60%),
+    radial-gradient(ellipse 700px 700px at 100% 20%, rgba(200,90,70,0.14), transparent 55%),
+    radial-gradient(ellipse 800px 900px at 50% 120%, rgba(120,70,40,0.20), transparent 60%),
+    #150e0c;
+  background-attachment: fixed;
   color: #f5ede1;
+  position: relative;
 }
 
+/* Grain subtil, façon papier/texture — casse l'effet "écran plat" des fonds unis */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Carte principale : profondeur réelle (halo interne + bordure dégradée), pas un simple bloc uni */
 .premium-card {
-  background: linear-gradient(160deg, rgba(245,237,225,0.04), rgba(245,237,225,0.01));
-  border: 1px solid rgba(245,237,225,0.08);
+  position: relative;
+  background: linear-gradient(155deg, rgba(245,237,225,0.055), rgba(245,237,225,0.015));
+  border: 1px solid rgba(245,237,225,0.09);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.04) inset,
+    0 20px 40px -20px rgba(0,0,0,0.55);
+}
+
+/* Halo décoratif organique (à poser en arrière-plan d'une section, jamais répété identique partout) */
+.glow-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 0;
 }

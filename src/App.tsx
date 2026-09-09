@@ -134,7 +134,10 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#140d0c] font-sans text-[#f5ede1] pb-24 lg:pb-0 lg:flex">
+    <div className="min-h-screen font-sans text-[#f5ede1] pb-24 lg:pb-0 lg:flex relative">
+      {/* Halos organiques fixes, cohérents avec l'écran de connexion */}
+      <div className="glow-orb w-[380px] h-[380px] bg-[#c8663f]/15 -top-40 right-[-100px] fixed" />
+      <div className="glow-orb w-[320px] h-[320px] bg-[#b8762e]/12 bottom-[-80px] left-[-80px] fixed" />
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:shrink-0 bg-black/30 border-r border-white/[0.06] min-h-screen p-6">
         <div className="flex items-center gap-3 mb-10">
