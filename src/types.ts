@@ -26,7 +26,7 @@ export interface ZoneCategory {
 export const ZONE_CATEGORIES: ZoneCategory[] = [
   { id: "visage_cou", label: "Visage & Cou", zones: ["visage", "cou"], photo: "/zones/visage.jpg" },
   { id: "bras_mains", label: "Bras & Mains", zones: ["bras", "avant_bras", "mains"], photo: "/zones/bras.jpg" },
-  { id: "torse", label: "Torse", zones: ["poitrine", "dos"], photo: "/zones/poitrine.jpg" },
+  { id: "torse", label: "Haut du corps", zones: ["poitrine", "dos"], photo: "/zones/poitrine.jpg" },
   { id: "abdomen", label: "Abdomen", zones: ["ventre"], photo: "/zones/ventre.jpg" },
   { id: "jambes_pieds", label: "Jambes & Pieds", zones: ["jambes", "pieds"], photo: "/zones/jambes.jpg" },
 ];

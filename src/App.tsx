@@ -136,7 +136,7 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen font-sans text-[#2b1620] pb-24 lg:pb-0 lg:flex relative">
+    <div className="min-h-screen font-sans text-[#2b1620] pb-28 lg:pb-0 lg:flex relative">
       {/* Halos organiques fixes, cohérents avec l'écran de connexion */}
       <div className="glow-orb w-[380px] h-[380px] bg-[#e0578f]/15 -top-40 right-[-100px] fixed" />
       <div className="glow-orb w-[320px] h-[320px] bg-[#d6407a]/12 bottom-[-80px] left-[-80px] fixed" />
@@ -161,8 +161,8 @@ export default function App() {
       </aside>
 
       {/* Mobile header */}
-      <header className="lg:hidden flex items-center justify-between gap-3 px-5 py-3 border-b border-[#2b1620]/[0.07] bg-white/40">
-        <img src="/icon-192.png" alt="SkinDiag" className="w-16 h-16 -my-2 object-contain" />
+      <header className="lg:hidden flex items-center justify-between gap-3 px-5 py-2 border-b border-[#2b1620]/[0.07] bg-white/40">
+        <img src="/icon-192.png" alt="SkinDiag" className="w-12 h-12 object-contain" />
         <span className="text-[11px] text-[#d6407a] font-medium text-right leading-tight max-w-[110px]">
           Une peau saine à chaque étape de votre vie
         </span>

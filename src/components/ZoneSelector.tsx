@@ -31,7 +31,7 @@ export default function ZoneSelector({ categoryId, onBack, onSelect }: ZoneSelec
       </button>
 
       <h2 className="text-2xl font-display font-semibold text-[#2b1620] mb-1.5">{category.label}</h2>
-      <p className="text-sm text-[#2b1620]/60 mb-6">Choisissez la zone précise à analyser.</p>
+      <p className="text-sm text-[#2b1620]/60 mb-6">Choisissez la zone à analyser.</p>
 
       <div className="space-y-3.5">
         {category.zones.map((zone) => (
