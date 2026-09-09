@@ -40,7 +40,7 @@ export default function ZoneSelector({ categoryId, onBack, onSelect }: ZoneSelec
             onClick={() => onSelect(zone)}
             className="w-full flex items-center gap-4 bg-white rounded-[22px] overflow-hidden shadow-[0_10px_28px_-16px_rgba(214,64,122,0.35)] hover:-translate-y-0.5 transition cursor-pointer text-left"
           >
-            <img src={ZONE_PHOTOS[zone as Exclude<SkinZone, "autre">]} alt={ZONE_LABELS[zone]} className="w-28 h-28 object-cover shrink-0" />
+            <img src={ZONE_PHOTOS[zone as Exclude<SkinZone, "autre">]} alt={ZONE_LABELS[zone]} className="w-32 h-32 sm:w-40 sm:h-40 object-cover shrink-0" />
             <div className="flex-1 min-w-0 py-4">
               <span className="text-lg font-semibold text-[#2b1620] block">{ZONE_LABELS[zone]}</span>
               <span className="text-xs text-[#2b1620]/50">Analyse peau noire africaine</span>

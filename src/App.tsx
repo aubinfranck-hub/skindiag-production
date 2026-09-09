@@ -160,16 +160,8 @@ export default function App() {
         </nav>
       </aside>
 
-      {/* Mobile header */}
-      <header className="lg:hidden flex items-center justify-between gap-3 px-5 py-2 border-b border-[#2b1620]/[0.07] bg-white/40">
-        <img src="/icon-192.png" alt="SkinDiag" className="w-12 h-12 object-contain" />
-        <span className="text-[11px] text-[#d6407a] font-medium text-right leading-tight max-w-[110px]">
-          Une peau saine à chaque étape de votre vie
-        </span>
-      </header>
-
       {/* Contenu principal */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-5 py-6 lg:py-10">
+      <main className="flex-1 max-w-2xl mx-auto w-full px-5 py-4 lg:py-10">
         {quotaMessage && activeTab === "abonnement" && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-5 text-sm text-amber-300">
             {quotaMessage}
