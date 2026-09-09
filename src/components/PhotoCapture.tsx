@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Camera, Upload, ArrowLeft, Sparkles } from "lucide-react";
+import { Camera, Upload, ArrowLeft, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { SkinZone, ZONE_LABELS } from "../types";
 
 interface PhotoCaptureProps {
@@ -7,9 +7,10 @@ interface PhotoCaptureProps {
   onBack: () => void;
   onCapture: (base64: string, mimeType: string) => void;
   isLoading: boolean;
+  qualityIssue?: string | null;
 }
 
-export default function PhotoCapture({ zone, onBack, onCapture, isLoading }: PhotoCaptureProps) {
+export default function PhotoCapture({ zone, onBack, onCapture, isLoading, qualityIssue }: PhotoCaptureProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [pendingBase64, setPendingBase64] = useState<{ data: string; mime: string } | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +39,16 @@ export default function PhotoCapture({ zone, onBack, onCapture, isLoading }: Pho
 
       <h2 className="text-2xl font-display font-semibold text-[#2b1620] mb-1.5">Zone : {ZONE_LABELS[zone]}</h2>
       <p className="text-sm text-[#2b1620]/60 mb-6">Prenez une photo nette, bien éclairée, de la zone à analyser.</p>
+
+      {qualityIssue && (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700">Photo à reprendre</p>
+            <p className="text-xs text-amber-600/90 mt-1">{qualityIssue}</p>
+          </div>
+        </div>
+      )}
 
       <div className="premium-card rounded-3xl p-6 text-center">
         {preview ? (
@@ -85,13 +96,13 @@ export default function PhotoCapture({ zone, onBack, onCapture, isLoading }: Pho
       <button
         onClick={() => pendingBase64 && onCapture(pendingBase64.data, pendingBase64.mime)}
         disabled={!pendingBase64 || isLoading}
-        className="w-full mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-40 text-white font-semibold text-sm py-4 rounded-2xl transition cursor-pointer"
+        className="w-full mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-70 text-white font-semibold text-sm py-4 rounded-2xl transition cursor-pointer"
       >
         {isLoading ? (
-          <>Analyse en cours...</>
+          <><Loader2 className="w-4 h-4 animate-spin" /> Vérification de la photo...</>
         ) : (
           <>
-            <Sparkles className="w-4 h-4" /> Analyser cette photo
+            <Sparkles className="w-4 h-4" /> Continuer avec cette photo
           </>
         )}
       </button>

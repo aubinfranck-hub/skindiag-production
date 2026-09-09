@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Video, ArrowLeft, Sparkles, Square, Circle, Upload } from "lucide-react";
+import { Video, ArrowLeft, Sparkles, Square, Circle, Upload, Loader2, AlertTriangle } from "lucide-react";
 import { SkinZone, ZONE_LABELS } from "../types";
 
 interface VideoCaptureProps {
@@ -7,11 +7,12 @@ interface VideoCaptureProps {
   onBack: () => void;
   onCapture: (base64: string, mimeType: string) => void;
   isLoading: boolean;
+  qualityIssue?: string | null;
 }
 
 const MAX_DURATION_SEC = 8;
 
-export default function VideoCapture({ zone, onBack, onCapture, isLoading }: VideoCaptureProps) {
+export default function VideoCapture({ zone, onBack, onCapture, isLoading, qualityIssue }: VideoCaptureProps) {
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -131,6 +132,16 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
         Filmez la zone sous un bon éclairage, {MAX_DURATION_SEC} secondes maximum. Bougez légèrement pour montrer le relief.
       </p>
 
+      {qualityIssue && (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700">Vidéo à reprendre</p>
+            <p className="text-xs text-amber-600/90 mt-1">{qualityIssue}</p>
+          </div>
+        </div>
+      )}
+
       <div className="premium-card rounded-3xl p-6 text-center">
         {recordedUrl ? (
           <video src={recordedUrl} controls className="w-full max-h-80 rounded-2xl mb-4 bg-black" />
@@ -197,9 +208,9 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
       <button
         onClick={() => pending && onCapture(pending.data, pending.mime)}
         disabled={!pending || isLoading}
-        className="w-full mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-40 text-white font-semibold text-sm py-4 rounded-2xl transition cursor-pointer"
+        className="w-full mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-70 text-white font-semibold text-sm py-4 rounded-2xl transition cursor-pointer"
       >
-        {isLoading ? "Analyse en cours..." : <><Sparkles className="w-4 h-4" /> Analyser cette vidéo</>}
+        {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Vérification de la vidéo...</> : <><Sparkles className="w-4 h-4" /> Continuer avec cette vidéo</>}
       </button>
 
       <p className="text-[11px] text-[#2b1620]/40 text-center mt-4 leading-relaxed">

@@ -85,17 +85,40 @@ export default function App() {
   }, [sessionToken, loadStatus, loadHistory]);
 
   const [pendingImage, setPendingImage] = useState<{ data: string; mime: string } | null>(null);
+  const [qualityIssue, setQualityIssue] = useState<string | null>(null);
+  const [isCheckingQuality, setIsCheckingQuality] = useState(false);
 
   const handleLoginSuccess = (token: string) => {
     localStorage.setItem("skindiag_token", token);
     setSessionToken(token);
   };
 
-  // La capture (photo/vidéo) ne lance plus l'analyse directement : elle passe d'abord
-  // par le questionnaire, pour croiser image + symptômes déclarés (plus fiable qu'une photo seule).
-  const handleCaptured = (base64: string, mimeType: string) => {
+  // La capture vérifie D'ABORD la qualité de la photo/vidéo, avant même le questionnaire —
+  // inutile de poser 6 questions si la photo devra être reprise.
+  const handleCaptured = async (base64: string, mimeType: string) => {
     setPendingImage({ data: base64, mime: mimeType });
-    setStep("questionnaire");
+    setQualityIssue(null);
+    setIsCheckingQuality(true);
+    try {
+      const res = await fetch("/api/skindiag/check-quality", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({ image: base64, mimeType }),
+      });
+      if (res.status === 401) { handleLogout(); return; }
+      const data = await res.json();
+      if (data.success && data.qualiteImage?.decision === "C_insuffisante") {
+        setQualityIssue(data.qualiteImage.message);
+        return;
+      }
+      // A_excellente ou B_exploitable_imparfaite (ou vérification indisponible) : on continue
+      setStep("questionnaire");
+    } catch {
+      // En cas d'erreur réseau sur la vérification seule, on ne bloque pas l'utilisateur
+      setStep("questionnaire");
+    } finally {
+      setIsCheckingQuality(false);
+    }
   };
 
   const handleAnalyze = async (answers: QuestionnaireAnswers) => {
@@ -212,10 +235,10 @@ export default function App() {
               />
             )}
             {step === "capture" && captureMode === "photo" && (
-              <PhotoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleCaptured} isLoading={false} />
+              <PhotoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleCaptured} isLoading={isCheckingQuality} qualityIssue={qualityIssue} />
             )}
             {step === "capture" && captureMode === "video" && (
-              <VideoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleCaptured} isLoading={false} />
+              <VideoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleCaptured} isLoading={isCheckingQuality} qualityIssue={qualityIssue} />
             )}
             {step === "questionnaire" && (
               <Questionnaire onBack={() => setStep("capture")} onSubmit={handleAnalyze} isLoading={isLoading} />

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Sparkles, Loader2 } from "lucide-react";
 
 export interface QuestionnaireAnswers {
   duree: string;
@@ -65,7 +65,7 @@ export default function Questionnaire({ onBack, onSubmit, isLoading }: Questionn
         disabled={!allAnswered || isLoading}
         className="w-full mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-40 text-white font-semibold text-sm py-4 rounded-2xl transition cursor-pointer"
       >
-        {isLoading ? "Analyse en cours..." : <><Sparkles className="w-4 h-4" /> Lancer l'analyse <ArrowRight className="w-4 h-4" /></>}
+        {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyse en cours...</> : <><Sparkles className="w-4 h-4" /> Lancer l'analyse <ArrowRight className="w-4 h-4" /></>}
       </button>
     </div>
   );

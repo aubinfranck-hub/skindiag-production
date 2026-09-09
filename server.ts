@@ -476,6 +476,51 @@ app.post("/api/user/request-activation", requireAuth, (req: any, res) => {
   res.json({ success: true });
 });
 
+// Contrôle qualité SEUL, rapide, exécuté immédiatement après la capture — avant le questionnaire.
+// Évite de faire répondre l'utilisateur à 6 questions pour finalement rejeter une mauvaise photo.
+// Ne consomme jamais le quota (ce n'est pas une analyse).
+app.post("/api/skindiag/check-quality", analyzeLimiter, requireAuth, async (req: any, res) => {
+  try {
+    const { image, mimeType } = req.body;
+    if (!image || !mimeType) {
+      return res.status(400).json({ success: false, message: "Photo requise." });
+    }
+    const isVideo = mimeType.startsWith("video/");
+    const response = await retryWithBackoff(() => getAIClient().models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: {
+        parts: [
+          { inlineData: { data: image, mimeType } },
+          { text: `Contrôle uniquement la qualité technique de cette ${isVideo ? "vidéo" : "photo"}, ne fais aucune analyse de peau.` },
+        ],
+      },
+      config: {
+        systemInstruction: `Tu vérifies UNIQUEMENT la qualité technique d'une ${isVideo ? "vidéo" : "photo"} destinée à une analyse de peau — pas d'analyse dermatologique ici.
+Vérifie : luminosité, exposition, netteté, reflets, dominante de couleur, cadrage (zone insuffisamment visible, distance excessive, obstruction), filtre/retouche artificielle, compression excessive.
+Classe en 3 niveaux : "A_excellente" (fiable sans réserve), "B_exploitable_imparfaite" (analysable mais fiabilité réduite — précise pourquoi dans "message"), "C_insuffisante" (analyse impossible — "message" doit expliquer clairement quoi corriger et comment).
+Réponds UNIQUEMENT en JSON selon le schéma.`,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            decision: { type: Type.STRING, enum: ["A_excellente", "B_exploitable_imparfaite", "C_insuffisante"] },
+            acceptable: { type: Type.BOOLEAN },
+            score: { type: Type.INTEGER },
+            problemes: { type: Type.ARRAY, items: { type: Type.STRING } },
+            message: { type: Type.STRING },
+          },
+          required: ["decision", "acceptable", "score", "problemes", "message"],
+        },
+      },
+    }));
+    const parsed = JSON.parse(response.text || "{}");
+    res.json({ success: true, qualiteImage: parsed });
+  } catch (err: any) {
+    console.error("[SkinDiag CheckQuality] Erreur:", err.message);
+    res.status(500).json({ success: false, message: "Vérification impossible. Réessayez." });
+  }
+});
+
 app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req: any, res) => {
   try {
     const { zone, image, mimeType, questionnaire } = req.body;
