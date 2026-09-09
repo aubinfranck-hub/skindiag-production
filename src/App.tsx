@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Scan, History, User, LogOut, CreditCard, ShieldCheck } from "lucide-react";
+import { Scan, History, User, LogOut, CreditCard, ShieldCheck, ShoppingBag } from "lucide-react";
 import CategorySelector from "./components/CategorySelector";
 import SplashScreen from "./components/SplashScreen";
 import ZoneSelector from "./components/ZoneSelector";
@@ -10,10 +10,11 @@ import Questionnaire, { QuestionnaireAnswers } from "./components/Questionnaire"
 import ResultsView from "./components/ResultsView";
 import LoginScreen from "./components/LoginScreen";
 import SubscriptionPanel from "./components/SubscriptionPanel";
+import Shop from "./components/Shop";
 import AdminDashboard from "./components/AdminDashboard";
 import { SkinZone, SkinAnalysisResult } from "./types";
 
-type Tab = "diagnostic" | "historique" | "abonnement" | "admin" | "profil";
+type Tab = "diagnostic" | "historique" | "boutique" | "abonnement" | "admin" | "profil";
 type Step = "category" | "zone" | "mode" | "capture" | "questionnaire" | "resultat";
 
 interface UserStatus {
@@ -153,6 +154,7 @@ export default function App() {
   const tabs = [
     { id: "diagnostic" as Tab, label: "Analyser", icon: Scan },
     { id: "historique" as Tab, label: "Historique", icon: History },
+    { id: "boutique" as Tab, label: "Boutique", icon: ShoppingBag },
     { id: "abonnement" as Tab, label: "Abonnement", icon: CreditCard },
     ...(userStatus?.isAdmin ? [{ id: "admin" as Tab, label: "Admin", icon: ShieldCheck }] : []),
     { id: "profil" as Tab, label: "Profil", icon: User },
@@ -242,6 +244,8 @@ export default function App() {
             )}
           </div>
         )}
+
+        {activeTab === "boutique" && sessionToken && <Shop token={sessionToken} />}
 
         {activeTab === "abonnement" && sessionToken && (
           <SubscriptionPanel
