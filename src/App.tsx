@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Scan, History, User, LogOut, CreditCard, ShieldCheck } from "lucide-react";
+import CategorySelector from "./components/CategorySelector";
 import ZoneSelector from "./components/ZoneSelector";
 import ModeChoice from "./components/ModeChoice";
 import PhotoCapture from "./components/PhotoCapture";
@@ -11,7 +12,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import { SkinZone, SkinAnalysisResult } from "./types";
 
 type Tab = "diagnostic" | "historique" | "abonnement" | "admin" | "profil";
-type Step = "zone" | "mode" | "capture" | "resultat";
+type Step = "category" | "zone" | "mode" | "capture" | "resultat";
 
 interface UserStatus {
   isAdmin: boolean;
@@ -23,7 +24,8 @@ interface UserStatus {
 export default function App() {
   const [sessionToken, setSessionToken] = useState<string | null>(() => localStorage.getItem("skindiag_token"));
   const [activeTab, setActiveTab] = useState<Tab>("diagnostic");
-  const [step, setStep] = useState<Step>("zone");
+  const [step, setStep] = useState<Step>("category");
+  const [categoryId, setCategoryId] = useState<string>("visage_cou");
   const [zone, setZone] = useState<SkinZone>("visage");
   const [captureMode, setCaptureMode] = useState<"photo" | "video">("photo");
   const [isLoading, setIsLoading] = useState(false);
@@ -118,7 +120,7 @@ export default function App() {
 
   const restart = () => {
     setResult(null);
-    setStep("zone");
+    setStep("category");
   };
 
   if (!sessionToken) {
@@ -176,7 +178,15 @@ export default function App() {
 
         {activeTab === "diagnostic" && (
           <>
-            {step === "zone" && <ZoneSelector onSelect={(z) => { setZone(z); setStep("mode"); }} />}
+            {step === "category" && (
+              <CategorySelector
+                onSelectCategory={(id) => { setCategoryId(id); setStep("zone"); }}
+                onSelectAutre={() => { setZone("autre"); setStep("mode"); }}
+              />
+            )}
+            {step === "zone" && (
+              <ZoneSelector categoryId={categoryId} onBack={() => setStep("category")} onSelect={(z) => { setZone(z); setStep("mode"); }} />
+            )}
             {step === "mode" && (
               <ModeChoice
                 zone={zone}

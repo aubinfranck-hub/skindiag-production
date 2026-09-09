@@ -16,6 +16,21 @@ export const ZONE_LABELS: Record<SkinZone, string> = {
   autre: "Zone personnalisée",
 };
 
+export interface ZoneCategory {
+  id: string;
+  label: string;
+  zones: SkinZone[];
+  photo: string; // photo représentative de la catégorie (première sous-zone)
+}
+
+export const ZONE_CATEGORIES: ZoneCategory[] = [
+  { id: "visage_cou", label: "Visage & Cou", zones: ["visage", "cou"], photo: "/zones/visage.jpg" },
+  { id: "bras_mains", label: "Bras & Mains", zones: ["bras", "avant_bras", "mains"], photo: "/zones/bras.jpg" },
+  { id: "torse", label: "Torse", zones: ["poitrine", "dos"], photo: "/zones/poitrine.jpg" },
+  { id: "abdomen", label: "Abdomen", zones: ["ventre"], photo: "/zones/ventre.jpg" },
+  { id: "jambes_pieds", label: "Jambes & Pieds", zones: ["jambes", "pieds"], photo: "/zones/jambes.jpg" },
+];
+
 export interface DetectedCondition {
   nom: string;
   severite: "légère" | "modérée" | "marquée";
