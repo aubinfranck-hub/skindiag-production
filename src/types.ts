@@ -31,6 +31,19 @@ export const ZONE_CATEGORIES: ZoneCategory[] = [
   { id: "jambes_pieds", label: "Jambes & Pieds", zones: ["jambes", "pieds"], photo: "/zones/jambes.jpg" },
 ];
 
+export const ACTIF_LABELS: Record<string, string> = {
+  vitamine_c: "Vitamine C",
+  niacinamide: "Niacinamide",
+  acide_hyaluronique: "Acide hyaluronique",
+  ceramides: "Céramides",
+  glycerine: "Glycérine",
+  acide_azelaique: "Acide azélaïque",
+  beurre_de_karite: "Beurre de karité",
+  protection_solaire: "Protection solaire",
+  retinoides: "Rétinoïdes",
+  uree: "Urée",
+};
+
 export interface DetectedCondition {
   nom: string;
   severite: "légère" | "modérée" | "marquée";
@@ -45,20 +58,45 @@ export interface Product {
   price_fcfa: number;
   suitable_for: string[];
   availability_abidjan: boolean;
+  actifs: string[];
+  inci_composition: string;
+  is_sponsored: boolean;
+  is_partner: boolean;
+  fragrance_free: boolean;
+  matchScore: number;
+  actifsCorrespondants: string[];
+}
+
+export interface BesoinIdentifie {
+  besoin: string;
+  priorite: "principal" | "secondaire";
+}
+
+export interface QualiteImage {
+  acceptable: boolean;
+  score: number;
+  problemes: string[];
+  message: string;
 }
 
 export interface SkinAnalysisResult {
   zoneAnalysee: string;
+  analyseConcluante: boolean;
   scoreGlobal: number; // 0-100
   typeDePeau: string;
   hydratation: "faible" | "moyenne" | "bonne";
   uniformite: "faible" | "moyenne" | "bonne";
+  observation: string;
+  hypothesesCompatibles: string[];
   conditionsDetectees: DetectedCondition[];
   explicationSimple: string;
   recommandationProfessionnel: boolean;
   raisonRecommandation?: string;
+  besoinsIdentifies: BesoinIdentifie[];
+  actifsRecherches: string[];
   routineMatin: string[];
   routineSoir: string[];
-  produitsRecommandes: Product[];
+  produitsPartenaires: Product[];
+  autresProduits: Product[];
   confiance: number; // 0-100
 }

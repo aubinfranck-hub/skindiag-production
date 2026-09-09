@@ -190,7 +190,12 @@ async function initDatabase(): Promise<void> {
       category TEXT NOT NULL,
       price_fcfa INTEGER NOT NULL,
       suitable_for TEXT[] NOT NULL DEFAULT '{}',
-      availability_abidjan BOOLEAN NOT NULL DEFAULT true
+      availability_abidjan BOOLEAN NOT NULL DEFAULT true,
+      actifs TEXT[] NOT NULL DEFAULT '{}',
+      inci_composition TEXT NOT NULL DEFAULT '',
+      is_sponsored BOOLEAN NOT NULL DEFAULT false,
+      is_partner BOOLEAN NOT NULL DEFAULT false,
+      fragrance_free BOOLEAN NOT NULL DEFAULT false
     );
     CREATE TABLE IF NOT EXISTS accounts (
       phone TEXT PRIMARY KEY,
@@ -217,6 +222,27 @@ async function initDatabase(): Promise<void> {
       created_at BIGINT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_history_phone ON analysis_history (phone, created_at DESC);
+    CREATE TABLE IF NOT EXISTS orders (
+      id SERIAL PRIMARY KEY,
+      phone TEXT NOT NULL,
+      product_id INTEGER NOT NULL REFERENCES beauty_products(id),
+      quantity INTEGER NOT NULL DEFAULT 1,
+      delivery_name TEXT NOT NULL,
+      delivery_phone TEXT NOT NULL,
+      delivery_address TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at BIGINT NOT NULL
+    );
+  `);
+
+  // Colonnes ajoutées après la création initiale de la table (installations existantes) —
+  // ALTER sans risque si la colonne existe déjà.
+  await pool.query(`
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS actifs TEXT[] NOT NULL DEFAULT '{}';
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS inci_composition TEXT NOT NULL DEFAULT '';
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS is_sponsored BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS is_partner BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS fragrance_free BOOLEAN NOT NULL DEFAULT false;
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -251,25 +277,54 @@ async function initDatabase(): Promise<void> {
     console.log(`[Démarrage] Compte admin créé pour ${process.env.ADMIN_SEED_PHONE}.`);
   }
 
-  const { rows } = await pool.query("SELECT COUNT(*) FROM beauty_products");
-  if (Number(rows[0].count) === 0) {
-    await pool.query(`
-      INSERT INTO beauty_products (name, brand, category, price_fcfa, suitable_for, availability_abidjan) VALUES
-      ('Cetaphil Gentle Skin Cleanser', 'Cetaphil', 'cleanser', 8500, ARRAY['oily','dry','combination','sensitive'], true),
-      ('CeraVe Hydrating Cleanser', 'CeraVe', 'cleanser', 10000, ARRAY['dry','sensitive'], true),
-      ('La Roche-Posay Toleriane Hydrating Cleansing Milk', 'La Roche-Posay', 'cleanser', 12000, ARRAY['dry','sensitive'], true),
-      ('CeraVe Facial Moisturizing Lotion', 'CeraVe', 'moisturizer', 12000, ARRAY['dry','sensitive','combination'], true),
-      ('Cetaphil Rich Hydrating Night Cream', 'Cetaphil', 'moisturizer', 13500, ARRAY['dry','sensitive'], true),
-      ('La Roche-Posay Toleriane Fluid', 'La Roche-Posay', 'moisturizer', 11000, ARRAY['oily','combination'], true),
-      ('BeautyCI Shea Butter Moisturizer', 'BeautyCI', 'moisturizer', 5000, ARRAY['all'], true),
-      ('Vitamin C Serum 20% with Hyaluronic Acid', 'Generic', 'serum', 6000, ARRAY['all'], true),
-      ('Hyaluronic Acid Serum 99%', 'Generic', 'serum', 4000, ARRAY['all'], true),
-      ('Neutrogena Ultra Sheer Dry-Touch SPF 30', 'Neutrogena', 'sunscreen', 11000, ARRAY['all'], true)
-      ON CONFLICT DO NOTHING;
-    `);
-    console.log("[DB] 10 produits d'amorçage insérés.");
+  // Contrainte d'unicité sur le nom, nécessaire pour un INSERT idempotent (ON CONFLICT).
+  // Ignoré silencieusement si elle existe déjà (installations précédentes).
+  try {
+    await pool.query(`ALTER TABLE beauty_products ADD CONSTRAINT beauty_products_name_key UNIQUE (name);`);
+  } catch { /* contrainte déjà présente */ }
+
+  // Composition INCI/actifs réelle par produit — c'est elle qui alimente le moteur de
+  // recommandation (besoin → actif → produit), jamais la description marketing seule.
+  // INSERT idempotent (ON CONFLICT (name) DO NOTHING) pour ne jamais dupliquer au redémarrage.
+  await pool.query(`
+    INSERT INTO beauty_products (name, brand, category, price_fcfa, suitable_for, availability_abidjan, actifs, inci_composition, is_sponsored, is_partner, fragrance_free) VALUES
+    ('Cetaphil Gentle Skin Cleanser', 'Cetaphil', 'cleanser', 8500, ARRAY['oily','dry','combination','sensitive'], true, ARRAY['glycerine'], 'Aqua, Cetyl Alcohol, Propylene Glycol, Sodium Lauryl Sulfate, Stearyl Alcohol, Sodium Cocoyl Isethionate, Glycerin', false, false, true),
+    ('CeraVe Hydrating Cleanser', 'CeraVe', 'cleanser', 10000, ARRAY['dry','sensitive'], true, ARRAY['ceramides','glycerine','acide_hyaluronique'], 'Aqua, Glycerin, Cetearyl Alcohol, Ceramide NP, Ceramide AP, Ceramide EOP, Hyaluronic Acid, Niacinamide', true, true, true),
+    ('La Roche-Posay Toleriane Hydrating Cleansing Milk', 'La Roche-Posay', 'cleanser', 12000, ARRAY['dry','sensitive'], true, ARRAY['glycerine','niacinamide'], 'Aqua, Glycerin, Niacinamide, Shea Butter, Ceramide-3', false, false, true),
+    ('CeraVe Facial Moisturizing Lotion', 'CeraVe', 'moisturizer', 12000, ARRAY['dry','sensitive','combination'], true, ARRAY['ceramides','acide_hyaluronique','glycerine'], 'Aqua, Glycerin, Ceramide NP, Ceramide AP, Ceramide EOP, Hyaluronic Acid, Niacinamide, MVE Technology', true, true, true),
+    ('Cetaphil Rich Hydrating Night Cream', 'Cetaphil', 'moisturizer', 13500, ARRAY['dry','sensitive'], true, ARRAY['ceramides','glycerine'], 'Aqua, Glycerin, Shea Butter, Ceramide NP, Panthenol', false, false, true),
+    ('La Roche-Posay Toleriane Fluid', 'La Roche-Posay', 'moisturizer', 11000, ARRAY['oily','combination'], true, ARRAY['niacinamide','glycerine'], 'Aqua, Glycerin, Niacinamide, Ceramide-3, Prebiotic Thermal Water', false, false, true),
+    ('BeautyCI Shea Butter Moisturizer', 'BeautyCI', 'moisturizer', 5000, ARRAY['all'], true, ARRAY['beurre_de_karite','glycerine'], 'Butyrospermum Parkii (Shea Butter), Glycerin, Vitamin E', false, false, true),
+    ('Vitamin C Serum 20% with Hyaluronic Acid', 'Generic', 'serum', 6000, ARRAY['all'], true, ARRAY['vitamine_c','acide_hyaluronique'], 'Aqua, Ascorbic Acid 20%, Hyaluronic Acid, Vitamin E, Ferulic Acid', true, true, false),
+    ('Hyaluronic Acid Serum 99%', 'Generic', 'serum', 4000, ARRAY['all'], true, ARRAY['acide_hyaluronique'], 'Aqua, Sodium Hyaluronate 99%, Panthenol', false, false, true),
+    ('Neutrogena Ultra Sheer Dry-Touch SPF 30', 'Neutrogena', 'sunscreen', 11000, ARRAY['all'], true, ARRAY['protection_solaire'], 'Avobenzone, Homosalate, Octisalate, Octocrylene, Helioplex Technology', false, false, false),
+    ('The Ordinary Niacinamide 10% + Zinc 1%', 'The Ordinary', 'serum', 7500, ARRAY['oily','combination'], true, ARRAY['niacinamide'], 'Aqua, Niacinamide 10%, Zinc PCA 1%, Pentylene Glycol', true, true, true),
+    ('The Ordinary Azelaic Acid Suspension 10%', 'The Ordinary', 'serum', 8000, ARRAY['all'], true, ARRAY['acide_azelaique'], 'Azelaic Acid 10%, Aqua, Propanediol, Squalane', false, true, true)
+    ON CONFLICT (name) DO NOTHING;
+  `);
+
+  // Backfill pour les installations existantes : les 10 produits d'origine ont pu être créés
+  // avant l'ajout des colonnes actifs/composition — on les met à jour explicitement par nom.
+  const backfill: [string, string[], string, boolean, boolean][] = [
+    ["Cetaphil Gentle Skin Cleanser", ["glycerine"], "Aqua, Cetyl Alcohol, Propylene Glycol, Sodium Lauryl Sulfate, Stearyl Alcohol, Sodium Cocoyl Isethionate, Glycerin", false, false],
+    ["CeraVe Hydrating Cleanser", ["ceramides", "glycerine", "acide_hyaluronique"], "Aqua, Glycerin, Cetearyl Alcohol, Ceramide NP, Ceramide AP, Ceramide EOP, Hyaluronic Acid, Niacinamide", true, true],
+    ["La Roche-Posay Toleriane Hydrating Cleansing Milk", ["glycerine", "niacinamide"], "Aqua, Glycerin, Niacinamide, Shea Butter, Ceramide-3", false, false],
+    ["CeraVe Facial Moisturizing Lotion", ["ceramides", "acide_hyaluronique", "glycerine"], "Aqua, Glycerin, Ceramide NP, Ceramide AP, Ceramide EOP, Hyaluronic Acid, Niacinamide, MVE Technology", true, true],
+    ["Cetaphil Rich Hydrating Night Cream", ["ceramides", "glycerine"], "Aqua, Glycerin, Shea Butter, Ceramide NP, Panthenol", false, false],
+    ["La Roche-Posay Toleriane Fluid", ["niacinamide", "glycerine"], "Aqua, Glycerin, Niacinamide, Ceramide-3, Prebiotic Thermal Water", false, false],
+    ["BeautyCI Shea Butter Moisturizer", ["beurre_de_karite", "glycerine"], "Butyrospermum Parkii (Shea Butter), Glycerin, Vitamin E", false, false],
+    ["Vitamin C Serum 20% with Hyaluronic Acid", ["vitamine_c", "acide_hyaluronique"], "Aqua, Ascorbic Acid 20%, Hyaluronic Acid, Vitamin E, Ferulic Acid", true, true],
+    ["Hyaluronic Acid Serum 99%", ["acide_hyaluronique"], "Aqua, Sodium Hyaluronate 99%, Panthenol", false, false],
+    ["Neutrogena Ultra Sheer Dry-Touch SPF 30", ["protection_solaire"], "Avobenzone, Homosalate, Octisalate, Octocrylene, Helioplex Technology", false, false],
+  ];
+  for (const [name, actifsList, inci, sponsored, partner] of backfill) {
+    await pool.query(
+      `UPDATE beauty_products SET actifs = $2, inci_composition = $3, is_sponsored = $4, is_partner = $5
+       WHERE name = $1 AND (array_length(actifs, 1) IS NULL OR inci_composition = '')`,
+      [name, actifsList, inci, sponsored, partner]
+    );
   }
-  console.log("[DB] Table beauty_products vérifiée.");
+  console.log("[DB] Produits vérifiés/migrés (actifs, composition, sponsoring).");
 }
 
 app.use(cors());
@@ -403,7 +458,7 @@ app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req: any, 
       });
     }
 
-    // Récupère les produits disponibles pour un matching pertinent par l'IA
+    // Récupère les produits disponibles (composition/actifs) pour le matching déterministe
     let availableProducts: any[] = [];
     if (pool) {
       const { rows } = await pool.query("SELECT * FROM beauty_products WHERE availability_abidjan = true");
@@ -411,19 +466,30 @@ app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req: any, 
     }
 
     const isVideo = mimeType.startsWith("video/");
-    const systemInstruction = `Tu es SkinDiag, un assistant d'analyse visuelle de la peau spécialement conçu et calibré pour les peaux noires et foncées.
+    const systemInstruction = `Tu es SkinDiag, le moteur d'analyse visuelle de la peau spécialement conçu et calibré pour les peaux noires et foncées.
 
-RÈGLE FONDAMENTALE : ton analyse doit être adaptée aux nuances de peau foncée — hyperpigmentation, hypopigmentation, marques post-inflammatoires, variations naturelles de pigmentation. Ne base jamais ton analyse sur des références pensées pour peaux claires.
+═══ ÉTAPE 1 — CONTRÔLE QUALITÉ DE L'IMAGE (OBLIGATOIRE, AVANT TOUTE ANALYSE) ═══
+Tu ne dois JAMAIS analyser une image de mauvaise qualité. Vérifie : éclairage insuffisant, image trop sombre, surexposition, flash direct/reflets, contraste excessif, flou, mouvement, zone de peau insuffisamment visible, distance trop importante, mauvaise mise au point, obstruction (vêtements/cheveux/bijoux), filtre ou retouche artificielle, compression excessive, teinte de peau manifestement altérée par l'éclairage.
+Si l'image ne permet pas une analyse fiable : remplis UNIQUEMENT "qualiteImage" (acceptable=false, score bas, problemes listés, message clair demandant de reprendre la photo) et laisse tous les autres champs à leurs valeurs vides/nulles par défaut (scoreGlobal=0, tableaux vides, "analyseConcluante"=false). Ne fabrique JAMAIS d'observation sur une image inexploitable.
 
-TU N'ES PAS UN MÉDECIN. Tu fournis une analyse visuelle indicative uniquement, jamais un diagnostic médical. Si tu observes quelque chose qui pourrait nécessiter un avis médical (lésion suspecte, inflammation sévère, changement rapide), recommande explicitement de consulter un dermatologue.
+═══ RÈGLE PEAU NOIRE/FONCÉE ═══
+Adapte-toi aux nuances de peau foncée — hyperpigmentation, hypopigmentation, marques post-inflammatoires. L'ABSENCE de rougeur visible ne signifie PAS l'absence d'inflammation sur peau noire : base-toi sur plusieurs indices (texture, relief, brillance, desquamation), jamais uniquement la couleur rouge.
+
+═══ ÉTAPE 2 — 3 NIVEAUX DE RÉSULTAT (JAMAIS DE PSEUDO-DIAGNOSTIC) ═══
+Niveau 1 "observation" : ce que tu vois factuellement, sans interprétation ("zone présentant une pigmentation plus foncée que les zones voisines").
+Niveau 2 "hypothesesCompatibles" : liste de causes possibles compatibles avec l'observation (jamais une certitude, toujours plusieurs pistes si pertinent).
+Niveau 3 "orientation" : recommandation de consulter un professionnel si signes inhabituels (saignement, douleur, évolution rapide, ulcération, lésion inquiétante) — "recommandationProfessionnel" à true dans ce cas.
+Si les caractéristiques observées ne permettent PAS de conclure clairement : mets "analyseConcluante" à false et explique pourquoi dans "explicationSimple" (qualité insuffisante, caractéristiques ambiguës) plutôt que d'inventer une conclusion. Tu as le droit de dire "je ne sais pas".
+
+═══ ÉTAPE 3 — BESOINS CUTANÉS AVANT TOUT PRODUIT ═══
+Ne recommande JAMAIS un produit directement. Le raisonnement est TOUJOURS : observation → besoin cutané (ex: "hydratation", "uniformité du teint", "apaisement", "protection barrière") → actifs pertinents pour ce besoin (parmi : vitamine_c, niacinamide, acide_hyaluronique, ceramides, glycerine, acide_azelaique, beurre_de_karite, protection_solaire, retinoides, uree) → PUIS uniquement les produits de la liste ci-dessous qui contiennent réellement ces actifs. Remplis "besoinsIdentifies" (besoin + priorité) et "actifsRecherches" (liste des codes actifs, doit correspondre exactement aux valeurs possibles listées) — le serveur fera lui-même le matching produit par composition, ne choisis pas les produits toi-même.
 
 ${isVideo
-  ? `Une COURTE VIDÉO de la zone "${zone}" t'est fournie (pas une simple photo). Observe-la sur toute sa durée : la vidéo permet de mieux juger le relief, la texture et l'éclairage sous plusieurs angles qu'une photo fixe. Si l'éclairage ou le cadrage varie trop au cours de la vidéo pour juger correctement, dis-le explicitement dans "explicationSimple" plutôt que d'inventer une conclusion.`
+  ? `Une COURTE VIDÉO de la zone "${zone}" t'est fournie. Observe-la sur toute sa durée. Si l'éclairage/cadrage varie trop pour juger correctement, indique-le dans qualiteImage.`
   : `Une PHOTO de la zone "${zone}" t'est fournie.`}
-Réponds en JSON structuré selon le schéma. Sois bienveillant, précis, et jamais alarmiste sans raison.
+Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
 
-Produits disponibles à recommander (uniquement ceux réellement pertinents pour ce que tu observes) :
-${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category: p.category, suitable_for: p.suitable_for })))}`;
+    const actifsEnum = ["vitamine_c", "niacinamide", "acide_hyaluronique", "ceramides", "glycerine", "acide_azelaique", "beurre_de_karite", "protection_solaire", "retinoides", "uree"];
 
     const response = await retryWithBackoff(() => getAIClient().models.generateContent({
       model: "gemini-3.5-flash",
@@ -439,10 +505,23 @@ ${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category:
         responseSchema: {
           type: Type.OBJECT,
           properties: {
+            qualiteImage: {
+              type: Type.OBJECT,
+              properties: {
+                acceptable: { type: Type.BOOLEAN },
+                score: { type: Type.INTEGER },
+                problemes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                message: { type: Type.STRING },
+              },
+              required: ["acceptable", "score", "problemes", "message"],
+            },
+            analyseConcluante: { type: Type.BOOLEAN },
             scoreGlobal: { type: Type.INTEGER },
             typeDePeau: { type: Type.STRING },
             hydratation: { type: Type.STRING, enum: ["faible", "moyenne", "bonne"] },
             uniformite: { type: Type.STRING, enum: ["faible", "moyenne", "bonne"] },
+            observation: { type: Type.STRING },
+            hypothesesCompatibles: { type: Type.ARRAY, items: { type: Type.STRING } },
             conditionsDetectees: {
               type: Type.ARRAY,
               items: {
@@ -458,36 +537,79 @@ ${JSON.stringify(availableProducts.map(p => ({ id: p.id, name: p.name, category:
             explicationSimple: { type: Type.STRING },
             recommandationProfessionnel: { type: Type.BOOLEAN },
             raisonRecommandation: { type: Type.STRING },
+            besoinsIdentifies: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  besoin: { type: Type.STRING },
+                  priorite: { type: Type.STRING, enum: ["principal", "secondaire"] },
+                },
+                required: ["besoin", "priorite"],
+              },
+            },
+            actifsRecherches: { type: Type.ARRAY, items: { type: Type.STRING, enum: actifsEnum } },
             routineMatin: { type: Type.ARRAY, items: { type: Type.STRING } },
             routineSoir: { type: Type.ARRAY, items: { type: Type.STRING } },
-            produitIdsRecommandes: { type: Type.ARRAY, items: { type: Type.INTEGER } },
             confiance: { type: Type.INTEGER },
           },
-          required: ["scoreGlobal", "typeDePeau", "hydratation", "uniformite", "conditionsDetectees", "explicationSimple", "recommandationProfessionnel", "routineMatin", "routineSoir", "produitIdsRecommandes", "confiance"],
+          required: ["qualiteImage", "analyseConcluante", "scoreGlobal", "typeDePeau", "hydratation", "uniformite", "observation", "hypothesesCompatibles", "conditionsDetectees", "explicationSimple", "recommandationProfessionnel", "besoinsIdentifies", "actifsRecherches", "routineMatin", "routineSoir", "confiance"],
         },
       },
     }));
 
     const parsed = JSON.parse(response.text || "{}");
-    const produitsRecommandes = availableProducts.filter((p) => parsed.produitIdsRecommandes?.includes(p.id));
 
-    // Incrémente le compteur d'usage seulement après une analyse réussie
+    // Photo/vidéo de mauvaise qualité : on s'arrête ici, aucune analyse fabriquée, pas de
+    // décompte du quota (on ne pénalise pas l'utilisateur pour une photo à reprendre).
+    if (parsed.qualiteImage && parsed.qualiteImage.acceptable === false) {
+      return res.json({
+        success: true,
+        qualityRejected: true,
+        qualiteImage: parsed.qualiteImage,
+      });
+    }
+
+    // Matching produit déterministe par composition réelle (actifs), jamais choisi par l'IA
+    // elle-même — évite qu'un produit sponsorisé incompatible ne remonte artificiellement.
+    const actifsRecherches: string[] = parsed.actifsRecherches || [];
+    const scoredProducts = availableProducts
+      .map((p) => {
+        const productActifs: string[] = p.actifs || [];
+        const overlap = productActifs.filter((a) => actifsRecherches.includes(a));
+        if (overlap.length === 0) return null;
+        const matchScore = Math.round((overlap.length / actifsRecherches.length) * 100);
+        return { ...p, matchScore, actifsCorrespondants: overlap };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .sort((a, b) => b.matchScore - a.matchScore);
+
+    const produitsPartenaires = scoredProducts.filter((p) => p.is_sponsored);
+    const autresProduits = scoredProducts.filter((p) => !p.is_sponsored);
+
+    // Incrémente le compteur d'usage seulement après une analyse réussie et concluante
     usage.count += 1;
     usageTracking.set(phone, usage);
 
     const resultPayload = {
       zoneAnalysee: zone,
+      analyseConcluante: parsed.analyseConcluante,
       scoreGlobal: parsed.scoreGlobal,
       typeDePeau: parsed.typeDePeau,
       hydratation: parsed.hydratation,
       uniformite: parsed.uniformite,
+      observation: parsed.observation,
+      hypothesesCompatibles: parsed.hypothesesCompatibles || [],
       conditionsDetectees: parsed.conditionsDetectees || [],
       explicationSimple: parsed.explicationSimple,
       recommandationProfessionnel: parsed.recommandationProfessionnel,
       raisonRecommandation: parsed.raisonRecommandation,
+      besoinsIdentifies: parsed.besoinsIdentifies || [],
+      actifsRecherches,
       routineMatin: parsed.routineMatin || [],
       routineSoir: parsed.routineSoir || [],
-      produitsRecommandes,
+      produitsPartenaires,
+      autresProduits,
       confiance: parsed.confiance,
     };
 
@@ -521,6 +643,42 @@ app.get("/api/skindiag/history", requireAuth, async (req: any, res) => {
     console.error("[DB] Échec lecture historique:", err.message);
     res.status(500).json({ success: false, message: "Impossible de charger l'historique." });
   }
+});
+
+app.post("/api/skindiag/order", requireAuth, async (req: any, res) => {
+  if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
+  const { productId, quantity, deliveryName, deliveryPhone, deliveryAddress } = req.body;
+  if (!productId || !deliveryName || !deliveryPhone || !deliveryAddress) {
+    return res.status(400).json({ success: false, message: "Informations de livraison incomplètes." });
+  }
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO orders (phone, product_id, quantity, delivery_name, delivery_phone, delivery_address, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [req.session.phone, productId, quantity || 1, deliveryName, deliveryPhone, deliveryAddress, Date.now()]
+    );
+    res.json({ success: true, orderId: rows[0].id });
+  } catch (err: any) {
+    console.error("[DB] Échec création commande:", err.message);
+    res.status(500).json({ success: false, message: "Impossible d'enregistrer la commande." });
+  }
+});
+
+app.get("/api/admin/orders", requireAdminAuth, async (req, res) => {
+  if (!pool) return res.json({ success: true, orders: [] });
+  const { rows } = await pool.query(`
+    SELECT o.*, p.name AS product_name, p.price_fcfa
+    FROM orders o JOIN beauty_products p ON p.id = o.product_id
+    ORDER BY o.created_at DESC LIMIT 100
+  `);
+  res.json({ success: true, orders: rows });
+});
+
+app.post("/api/admin/orders/:id/status", requireAdminAuth, async (req, res) => {
+  if (!pool) return res.status(503).json({ success: false });
+  const { status } = req.body;
+  await pool.query("UPDATE orders SET status = $1 WHERE id = $2", [status, req.params.id]);
+  res.json({ success: true });
 });
 
 app.get("/api/skindiag/products", async (req, res) => {

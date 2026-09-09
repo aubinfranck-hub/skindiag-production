@@ -104,6 +104,10 @@ export default function App() {
         return;
       }
       if (data.success) {
+        if (data.qualityRejected) {
+          alert(data.qualiteImage?.message || "La qualité de la photo ne permet pas une analyse fiable. Reprenez la photo.");
+          return;
+        }
         setResult(data.result);
         setStep("resultat");
         if (sessionToken) {
@@ -198,7 +202,7 @@ export default function App() {
             {step === "capture" && captureMode === "video" && (
               <VideoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleAnalyze} isLoading={isLoading} />
             )}
-            {step === "resultat" && result && <ResultsView result={result} onRestart={restart} />}
+            {step === "resultat" && result && sessionToken && <ResultsView result={result} token={sessionToken} onRestart={restart} />}
           </>
         )}
 
