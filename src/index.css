@@ -6,11 +6,11 @@
   --font-display: "Playfair Display", serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* Palette premium beauté : ivoire/beige chaud + accent doré/bronze, pensée pour peaux foncées —
-     volontairement différente de l'univers automobile rouge/noir de DiagAssist. */
-  --color-brand-primary: #d6407a;  /* bronze/doré chaud */
-  --color-brand-dark: #1a1210;     /* brun très foncé, pas un noir pur */
-  --color-brand-cream: #f5ede1;    /* ivoire chaud */
+  /* Palette skincare rose pâle : fond clair blush, cartes blanches, accent rose/fuchsia —
+     pensée pour peaux foncées, dans l'esprit des UI kits beauté/spa de référence. */
+  --color-brand-primary: #d6407a;
+  --color-brand-dark: #2b1620;     /* texte principal : plum très foncé, pas un noir pur */
+  --color-brand-cream: #fdf1f5;    /* fond blush */
 }
 
 @keyframes fadeIn {
@@ -21,41 +21,28 @@
 
 body {
   background:
-    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(214,64,122,0.22), transparent 60%),
-    radial-gradient(ellipse 700px 700px at 100% 20%, rgba(224,87,143,0.16), transparent 55%),
-    radial-gradient(ellipse 800px 900px at 50% 120%, rgba(138,42,84,0.22), transparent 60%),
-    #150e0c;
+    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(214,64,122,0.10), transparent 60%),
+    radial-gradient(ellipse 700px 700px at 100% 10%, rgba(242,163,196,0.35), transparent 55%),
+    radial-gradient(ellipse 900px 900px at 50% 110%, rgba(253,217,229,0.9), transparent 60%),
+    #fdf1f5;
   background-attachment: fixed;
-  color: #f5ede1;
+  color: #2b1620;
   position: relative;
 }
 
-/* Grain subtil, façon papier/texture — casse l'effet "écran plat" des fonds unis */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.035;
-  z-index: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* Carte principale : profondeur réelle (halo interne + bordure dégradée), pas un simple bloc uni */
+/* Carte principale : blanche, ombre douce et diffuse — comme les références skincare/spa */
 .premium-card {
   position: relative;
-  background: linear-gradient(155deg, rgba(245,237,225,0.055), rgba(245,237,225,0.015));
-  border: 1px solid rgba(245,237,225,0.09);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.04) inset,
-    0 20px 40px -20px rgba(0,0,0,0.55);
+  background: #ffffff;
+  border: 1px solid rgba(43,22,32,0.06);
+  box-shadow: 0 14px 32px -18px rgba(214,64,122,0.28);
 }
 
-/* Halo décoratif organique (à poser en arrière-plan d'une section, jamais répété identique partout) */
+/* Halo décoratif organique, pastel, en arrière-plan */
 .glow-orb {
   position: absolute;
   border-radius: 999px;
-  filter: blur(50px);
+  filter: blur(60px);
   pointer-events: none;
   z-index: 0;
 }

@@ -26,8 +26,8 @@ export default function ZoneSelector({ onSelect }: ZoneSelectorProps) {
         ))}
       </div>
 
-      <h2 className="text-2xl font-display font-semibold text-[#f5ede1] mb-1.5">Quelle zone souhaitez-vous analyser ?</h2>
-      <p className="text-sm text-[#f5ede1]/60 mb-6">Choisissez la zone de peau à examiner.</p>
+      <h2 className="text-2xl font-display font-semibold text-[#2b1620] mb-1.5">Quelle zone souhaitez-vous analyser ?</h2>
+      <p className="text-sm text-[#2b1620]/60 mb-6">Choisissez la zone de peau à examiner.</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
         {ZONE_ORDER.map((zone, i) => {
@@ -36,7 +36,7 @@ export default function ZoneSelector({ onSelect }: ZoneSelectorProps) {
             <button
               key={zone}
               onClick={() => onSelect(zone)}
-              className="premium-card rounded-[22px] py-6 px-4 flex flex-col items-center gap-3 text-center hover:-translate-y-0.5 hover:border-white/20 transition cursor-pointer"
+              className="premium-card rounded-[22px] py-6 px-4 flex flex-col items-center gap-3 text-center hover:-translate-y-0.5 hover:border-[#2b1620]/25 transition cursor-pointer"
             >
               <div className="relative w-11 h-11 flex items-center justify-center">
                 <div className="absolute inset-0 rounded-full blur-md opacity-40" style={{ background: accent }} />
@@ -47,7 +47,7 @@ export default function ZoneSelector({ onSelect }: ZoneSelectorProps) {
                   <Scan className="w-4.5 h-4.5 text-white" />
                 </div>
               </div>
-              <span className="text-sm font-medium text-[#f5ede1]">{ZONE_LABELS[zone]}</span>
+              <span className="text-sm font-medium text-[#2b1620]">{ZONE_LABELS[zone]}</span>
             </button>
           );
         })}
@@ -55,7 +55,7 @@ export default function ZoneSelector({ onSelect }: ZoneSelectorProps) {
 
       <button
         onClick={() => onSelect("autre")}
-        className="w-full mt-3.5 premium-card rounded-[22px] p-4 flex items-center justify-center gap-2 text-sm text-[#f5ede1]/70 hover:text-[#f5ede1] hover:border-white/20 transition cursor-pointer"
+        className="w-full mt-3.5 premium-card rounded-[22px] p-4 flex items-center justify-center gap-2 text-sm text-[#2b1620]/70 hover:text-[#2b1620] hover:border-[#2b1620]/25 transition cursor-pointer"
       >
         <HelpCircle className="w-4 h-4" />
         Je ne sais pas / Autre zone

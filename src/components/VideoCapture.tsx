@@ -122,12 +122,12 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
 
   return (
     <div className="animate-fade-in">
-      <button onClick={onBack} className="flex items-center gap-1.5 text-xs text-[#f5ede1]/60 hover:text-[#f5ede1] mb-4 cursor-pointer">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-xs text-[#2b1620]/60 hover:text-[#2b1620] mb-4 cursor-pointer">
         <ArrowLeft className="w-3.5 h-3.5" /> Changer de zone
       </button>
 
-      <h2 className="text-2xl font-display font-semibold text-[#f5ede1] mb-1.5">Zone : {ZONE_LABELS[zone]}</h2>
-      <p className="text-sm text-[#f5ede1]/60 mb-6">
+      <h2 className="text-2xl font-display font-semibold text-[#2b1620] mb-1.5">Zone : {ZONE_LABELS[zone]}</h2>
+      <p className="text-sm text-[#2b1620]/60 mb-6">
         Filmez la zone sous un bon éclairage, {MAX_DURATION_SEC} secondes maximum. Bougez légèrement pour montrer le relief.
       </p>
 
@@ -138,7 +138,7 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
           <div className="relative rounded-2xl overflow-hidden bg-black mb-4" style={{ aspectRatio: "3/4" }}>
             <video ref={videoPreviewRef} muted playsInline className="w-full h-full object-cover" />
             {!streamRef.current && !isRecording && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[#f5ede1]/40">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[#2b1620]/40">
                 <Video className="w-12 h-12" />
                 <span className="text-sm">Caméra pas encore activée</span>
               </div>
@@ -167,7 +167,7 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
             <button
               onClick={isRecording ? stopRecording : startRecording}
               className={`w-full flex items-center justify-center gap-2 font-medium text-sm py-3.5 rounded-xl transition cursor-pointer ${
-                isRecording ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-[#f5ede1]"
+                isRecording ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-[#2b1620]/[0.04] hover:bg-[#2b1620]/[0.06] border border-[#2b1620]/10 text-[#2b1620]"
               }`}
             >
               {isRecording ? <><Square className="w-4 h-4" /> Arrêter l'enregistrement</> : <><Circle className="w-4 h-4 fill-rose-500 text-rose-500" /> Démarrer la caméra et filmer</>}
@@ -176,7 +176,7 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
             {!isRecording && (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-[#f5ede1] font-medium text-sm py-3.5 rounded-xl transition cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 bg-[#2b1620]/[0.04] hover:bg-[#2b1620]/[0.06] border border-[#2b1620]/10 text-[#2b1620] font-medium text-sm py-3.5 rounded-xl transition cursor-pointer"
               >
                 <Upload className="w-4 h-4" /> Importer une vidéo existante
               </button>
@@ -187,7 +187,7 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
         {recordedUrl && (
           <button
             onClick={() => { setRecordedUrl(null); setPending(null); }}
-            className="w-full text-xs text-[#f5ede1]/60 hover:text-[#f5ede1] py-2 cursor-pointer"
+            className="w-full text-xs text-[#2b1620]/60 hover:text-[#2b1620] py-2 cursor-pointer"
           >
             Changer de vidéo
           </button>
@@ -202,7 +202,7 @@ export default function VideoCapture({ zone, onBack, onCapture, isLoading }: Vid
         {isLoading ? "Analyse en cours..." : <><Sparkles className="w-4 h-4" /> Analyser cette vidéo</>}
       </button>
 
-      <p className="text-[11px] text-[#f5ede1]/40 text-center mt-4 leading-relaxed">
+      <p className="text-[11px] text-[#2b1620]/40 text-center mt-4 leading-relaxed">
         SkinDiag fournit une analyse visuelle indicative, pas un diagnostic médical.
         Consultez un dermatologue pour toute préoccupation inhabituelle ou persistante.
       </p>

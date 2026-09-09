@@ -50,55 +50,55 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <img
               src="https://images.unsplash.com/photo-1693004927824-f2623bbedc8b?w=300&q=80&auto=format&fit=crop"
               alt="SkinDiag"
-              className="relative w-20 h-20 rounded-full object-cover border-2 border-[#f5ede1]/20 shadow-xl"
+              className="relative w-20 h-20 rounded-full object-cover border-2 border-[#2b1620]/20 shadow-xl"
             />
           </div>
-          <h1 className="text-3xl font-display font-semibold text-[#f5ede1] tracking-tight">SkinDiag</h1>
-          <p className="text-sm text-[#f5ede1]/55 mt-1.5">Votre peau, comprise et accompagnée</p>
+          <h1 className="text-3xl font-display font-semibold text-[#2b1620] tracking-tight">SkinDiag</h1>
+          <p className="text-sm text-[#2b1620]/55 mt-1.5">Votre peau, comprise et accompagnée</p>
         </div>
 
         <div className="premium-card rounded-[28px] p-7">
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs text-[#f5ede1]/60 font-medium mb-1.5">Numéro de téléphone</label>
+            <label className="block text-xs text-[#2b1620]/60 font-medium mb-1.5">Numéro de téléphone</label>
             <div className="flex gap-2">
               <select
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
-                className="bg-black/30 border border-white/10 rounded-xl px-2 py-3 text-sm text-[#f5ede1] focus:outline-none focus:border-[#d6407a]"
+                className="bg-white border border-[#2b1620]/10 rounded-xl px-2 py-3 text-sm text-[#2b1620] focus:outline-none focus:border-[#d6407a]"
               >
                 <option value="+225">+225</option>
                 <option value="+221">+221</option>
                 <option value="+223">+223</option>
               </select>
               <div className="relative flex-1">
-                <Phone className="w-4 h-4 text-[#f5ede1]/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Phone className="w-4 h-4 text-[#2b1620]/40 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="tel"
                   required
                   placeholder="07 12 34 56"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-3 py-3 text-sm text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#d6407a]"
+                  className="w-full bg-white border border-[#2b1620]/10 rounded-xl pl-9 pr-3 py-3 text-sm text-[#2b1620] placeholder-[#2b1620]/30 focus:outline-none focus:border-[#d6407a]"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-[#f5ede1]/60 font-medium mb-1.5">Mot de passe</label>
+            <label className="block text-xs text-[#2b1620]/60 font-medium mb-1.5">Mot de passe</label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-[#f5ede1]/40 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-[#2b1620]/40 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type={showPassword ? "text" : "password"}
                 required
                 placeholder="Votre mot de passe"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-10 py-3 text-sm text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#d6407a]"
+                className="w-full bg-white border border-[#2b1620]/10 rounded-xl pl-9 pr-10 py-3 text-sm text-[#2b1620] placeholder-[#2b1620]/30 focus:outline-none focus:border-[#d6407a]"
               />
-              <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#f5ede1]/40 hover:text-[#f5ede1] cursor-pointer">
+              <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2b1620]/40 hover:text-[#2b1620] cursor-pointer">
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -115,7 +115,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </button>
         </form>
 
-        <p className="text-[11px] text-[#f5ede1]/40 text-center mt-5">
+        <p className="text-[11px] text-[#2b1620]/40 text-center mt-5">
           Pas de compte ? Contactez-nous pour en créer un.
         </p>
         </div>

@@ -44,9 +44,9 @@ export default function SubscriptionPanel({ token, currentPlan, used, limit, onR
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-2xl font-display font-semibold text-[#f5ede1] mb-1.5">Abonnement</h2>
-      <p className="text-sm text-[#f5ede1]/60 mb-6">
-        Forfait actuel : <strong className="text-[#f28fb0]">{currentPlan === "free_trial" ? "Essai gratuit" : currentPlan === "free_expired" ? "Expiré" : currentPlan === "payg_day" ? "Pass Jour" : currentPlan === "monthly" ? "Mensuel" : "Premium"}</strong>
+      <h2 className="text-2xl font-display font-semibold text-[#2b1620] mb-1.5">Abonnement</h2>
+      <p className="text-sm text-[#2b1620]/60 mb-6">
+        Forfait actuel : <strong className="text-[#d6407a]">{currentPlan === "free_trial" ? "Essai gratuit" : currentPlan === "free_expired" ? "Expiré" : currentPlan === "payg_day" ? "Pass Jour" : currentPlan === "monthly" ? "Mensuel" : "Premium"}</strong>
         {" · "}{used} / {limit === -1 ? "∞" : limit} analyses utilisées
       </p>
 
@@ -56,17 +56,17 @@ export default function SubscriptionPanel({ token, currentPlan, used, limit, onR
             key={p.id}
             onClick={() => { setSelected(p); setSent(false); }}
             className={`text-left rounded-2xl p-5 border transition cursor-pointer ${
-              selected.id === p.id ? "border-[#d6407a] bg-[#d6407a]/10" : "premium-card border-white/10 hover:border-white/20"
+              selected.id === p.id ? "border-[#d6407a] bg-[#d6407a]/10" : "premium-card border-[#2b1620]/10 hover:border-[#2b1620]/25"
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[#f5ede1]">{p.label}</span>
-              <span className="text-lg font-bold text-[#d6407a]">{p.price.toLocaleString("fr-FR")}F <span className="text-xs text-[#f5ede1]/50 font-normal">{p.unit}</span></span>
+              <span className="font-semibold text-[#2b1620]">{p.label}</span>
+              <span className="text-lg font-bold text-[#d6407a]">{p.price.toLocaleString("fr-FR")}F <span className="text-xs text-[#2b1620]/50 font-normal">{p.unit}</span></span>
             </div>
-            <p className="text-xs text-[#f5ede1]/50 mt-1">{p.desc}</p>
+            <p className="text-xs text-[#2b1620]/50 mt-1">{p.desc}</p>
             <ul className="mt-2.5 space-y-1">
               {p.features.map((f, i) => (
-                <li key={i} className="flex items-center gap-1.5 text-[11px] text-[#f5ede1]/70">
+                <li key={i} className="flex items-center gap-1.5 text-[11px] text-[#2b1620]/70">
                   <Check className="w-3 h-3 text-[#d6407a]" /> {f}
                 </li>
               ))}
@@ -76,9 +76,9 @@ export default function SubscriptionPanel({ token, currentPlan, used, limit, onR
       </div>
 
       <div className="premium-card rounded-2xl p-5">
-        <div className="flex items-start gap-3 bg-black/20 p-3.5 rounded-xl mb-3">
+        <div className="flex items-start gap-3 bg-[#fdf1f5] p-3.5 rounded-xl mb-3">
           <span className="shrink-0 w-6 h-6 rounded-full bg-[#d6407a] text-white text-xs font-bold flex items-center justify-center">1</span>
-          <p className="text-sm text-[#f5ede1]">Payez <strong>{selected.price.toLocaleString("fr-FR")}F</strong> via Wave.</p>
+          <p className="text-sm text-[#2b1620]">Payez <strong>{selected.price.toLocaleString("fr-FR")}F</strong> via Wave.</p>
         </div>
         <a
           href={`${WAVE_MERCHANT_URL}${selected.price}`}
@@ -88,14 +88,14 @@ export default function SubscriptionPanel({ token, currentPlan, used, limit, onR
           <ExternalLink className="w-4 h-4" /> Ouvrir Wave — Payer {selected.price}F
         </a>
 
-        <div className="flex items-start gap-3 bg-black/20 p-3.5 rounded-xl mb-3">
+        <div className="flex items-start gap-3 bg-[#fdf1f5] p-3.5 rounded-xl mb-3">
           <span className="shrink-0 w-6 h-6 rounded-full bg-[#d6407a] text-white text-xs font-bold flex items-center justify-center">2</span>
-          <p className="text-sm text-[#f5ede1]">Une fois payé, confirmez ici — activation manuelle sous quelques minutes.</p>
+          <p className="text-sm text-[#2b1620]">Une fois payé, confirmez ici — activation manuelle sous quelques minutes.</p>
         </div>
         <button
           onClick={handleConfirm}
           disabled={sent}
-          className="w-full flex items-center justify-center gap-2 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 border border-white/10 text-[#f5ede1] font-semibold text-sm py-3.5 rounded-xl transition cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 bg-[#2b1620]/[0.04] hover:bg-[#2b1620]/[0.06] disabled:opacity-50 border border-[#2b1620]/10 text-[#2b1620] font-semibold text-sm py-3.5 rounded-xl transition cursor-pointer"
         >
           <Sparkles className="w-4 h-4" /> {sent ? "Demande envoyée ✓" : "J'ai payé — Confirmer"}
         </button>

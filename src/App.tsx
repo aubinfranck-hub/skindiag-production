@@ -134,12 +134,12 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen font-sans text-[#f5ede1] pb-24 lg:pb-0 lg:flex relative">
+    <div className="min-h-screen font-sans text-[#2b1620] pb-24 lg:pb-0 lg:flex relative">
       {/* Halos organiques fixes, cohérents avec l'écran de connexion */}
       <div className="glow-orb w-[380px] h-[380px] bg-[#e0578f]/15 -top-40 right-[-100px] fixed" />
       <div className="glow-orb w-[320px] h-[320px] bg-[#d6407a]/12 bottom-[-80px] left-[-80px] fixed" />
       {/* Sidebar desktop */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:shrink-0 bg-black/30 border-r border-white/[0.06] min-h-screen p-6">
+      <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:shrink-0 bg-white/70 backdrop-blur-sm border-r border-[#2b1620]/[0.07] min-h-screen p-6">
         <div className="flex items-center gap-3 mb-10">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d6407a] to-[#8a2a54] flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-white" />
@@ -152,7 +152,7 @@ export default function App() {
               key={t.id}
               onClick={() => setActiveTab(t.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition cursor-pointer ${
-                activeTab === t.id ? "bg-[#d6407a]/15 text-[#f28fb0]" : "text-[#f5ede1]/60 hover:bg-white/[0.03]"
+                activeTab === t.id ? "bg-[#d6407a]/15 text-[#d6407a]" : "text-[#2b1620]/60 hover:bg-[#2b1620]/[0.03]"
               }`}
             >
               <t.icon className="w-4.5 h-4.5" /> {t.label}
@@ -162,7 +162,7 @@ export default function App() {
       </aside>
 
       {/* Mobile header */}
-      <header className="lg:hidden flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]">
+      <header className="lg:hidden flex items-center gap-3 px-5 py-4 border-b border-[#2b1620]/[0.07]">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d6407a] to-[#8a2a54] flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
@@ -201,14 +201,14 @@ export default function App() {
           <div className="animate-fade-in">
             <h2 className="text-2xl font-display font-semibold mb-6">Historique</h2>
             {history.length === 0 ? (
-              <p className="text-sm text-[#f5ede1]/50">Aucune analyse pour l'instant.</p>
+              <p className="text-sm text-[#2b1620]/50">Aucune analyse pour l'instant.</p>
             ) : (
               <div className="space-y-3">
                 {history.map((h, i) => (
                   <div key={i} className="premium-card rounded-2xl p-4 flex items-center justify-between">
                     <div>
                       <span className="text-sm font-medium">{h.zoneAnalysee}</span>
-                      <p className="text-xs text-[#f5ede1]/50">{h.typeDePeau}</p>
+                      <p className="text-xs text-[#2b1620]/50">{h.typeDePeau}</p>
                     </div>
                     <span className="text-lg font-bold text-[#d6407a]">{h.scoreGlobal}</span>
                   </div>
@@ -235,7 +235,7 @@ export default function App() {
         {activeTab === "profil" && (
           <div className="animate-fade-in">
             <h2 className="text-2xl font-display font-semibold mb-6">Profil</h2>
-            <div className="premium-card rounded-2xl p-5 text-sm text-[#f5ede1]/70 leading-relaxed">
+            <div className="premium-card rounded-2xl p-5 text-sm text-[#2b1620]/70 leading-relaxed">
               SkinDiag fournit une analyse visuelle indicative de la peau, spécialement pensée pour les
               peaux noires et foncées. Cette analyse ne constitue pas un diagnostic médical et ne remplace
               pas la consultation d'un dermatologue.
@@ -251,17 +251,17 @@ export default function App() {
       </main>
 
       {/* Nav mobile */}
-      <nav className="lg:hidden fixed bottom-4 left-4 right-4 bg-black/70 backdrop-blur-lg border border-white/10 rounded-2xl p-1.5 flex items-center justify-around overflow-x-auto">
+      <nav className="lg:hidden fixed bottom-4 left-4 right-4 bg-white/90 backdrop-blur-lg border border-[#2b1620]/10 rounded-2xl p-1.5 flex items-center justify-around shadow-[0_8px_30px_-10px_rgba(214,64,122,0.35)]">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition cursor-pointer ${
-              activeTab === t.id ? "bg-white/[0.06] text-[#f28fb0]" : "text-[#f5ede1]/50"
+            className={`flex-1 min-w-0 overflow-hidden flex flex-col items-center gap-1 py-2 px-0.5 rounded-xl transition cursor-pointer ${
+              activeTab === t.id ? "bg-[#2b1620]/[0.04] text-[#d6407a]" : "text-[#2b1620]/50"
             }`}
           >
-            <t.icon className="w-5 h-5" />
-            <span className="text-[9px] font-semibold uppercase tracking-wider">{t.label}</span>
+            <t.icon className="w-5 h-5 shrink-0" />
+            <span className="text-[8px] font-semibold uppercase leading-tight whitespace-nowrap">{t.label}</span>
           </button>
         ))}
       </nav>

@@ -102,22 +102,22 @@ export default function AdminDashboard({ token }: { token: string }) {
 
   return (
     <div className="animate-fade-in space-y-5">
-      <h2 className="text-2xl font-display font-semibold text-[#f5ede1] mb-1">Administration</h2>
+      <h2 className="text-2xl font-display font-semibold text-[#2b1620] mb-1">Administration</h2>
 
       {/* Création de compte */}
       <div className="premium-card rounded-2xl p-5">
-        <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#f5ede1]/50 font-semibold mb-3">
+        <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#2b1620]/50 font-semibold mb-3">
           <UserPlus className="w-3.5 h-3.5" /> Créer un compte
         </h3>
         <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <input
             type="tel" required placeholder="+225 07 12 34 56"
             value={phone} onChange={(e) => setPhone(e.target.value)}
-            className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-[#f5ede1] placeholder-[#f5ede1]/30 focus:outline-none focus:border-[#d6407a] font-mono"
+            className="bg-white border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] placeholder-[#2b1620]/30 focus:outline-none focus:border-[#d6407a] font-mono"
           />
           <select
             value={plan} onChange={(e) => setPlan(e.target.value)}
-            className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-[#f5ede1] focus:outline-none focus:border-[#d6407a]"
+            className="bg-white border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]"
           >
             <option value="free_trial">Essai gratuit</option>
             <option value="payg_day">Pass Jour</option>
@@ -135,8 +135,8 @@ export default function AdminDashboard({ token }: { token: string }) {
         {createdInfo && (
           <div className="mt-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5">
             <p className="text-[11px] text-emerald-300 font-bold uppercase mb-1">Compte créé — communiquez ceci :</p>
-            <p className="text-xs text-[#f5ede1]">Numéro : <strong className="font-mono">{createdInfo.phone}</strong></p>
-            <p className="text-xs text-[#f5ede1]">Mot de passe : <strong className="font-mono text-base">{createdInfo.password}</strong></p>
+            <p className="text-xs text-[#2b1620]">Numéro : <strong className="font-mono">{createdInfo.phone}</strong></p>
+            <p className="text-xs text-[#2b1620]">Mot de passe : <strong className="font-mono text-base">{createdInfo.password}</strong></p>
           </div>
         )}
       </div>
@@ -144,20 +144,20 @@ export default function AdminDashboard({ token }: { token: string }) {
       {/* Activations en attente */}
       <div className="premium-card rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs uppercase tracking-wider text-[#f5ede1]/50 font-semibold">Paiements en attente ({pending.length})</h3>
-          <button onClick={load} className="text-[#f5ede1]/40 hover:text-[#f5ede1] cursor-pointer">
+          <h3 className="text-xs uppercase tracking-wider text-[#2b1620]/50 font-semibold">Paiements en attente ({pending.length})</h3>
+          <button onClick={load} className="text-[#2b1620]/40 hover:text-[#2b1620] cursor-pointer">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
         {pending.length === 0 ? (
-          <p className="text-xs text-[#f5ede1]/40">Aucune demande en attente.</p>
+          <p className="text-xs text-[#2b1620]/40">Aucune demande en attente.</p>
         ) : (
           <div className="space-y-2">
             {pending.map((p) => (
-              <div key={p.phone} className="flex items-center justify-between bg-black/20 rounded-xl p-3">
+              <div key={p.phone} className="flex items-center justify-between bg-[#fdf1f5] rounded-xl p-3">
                 <div>
-                  <span className="text-xs font-mono text-[#f5ede1]">{p.phone}</span>
-                  <p className="text-[10px] text-[#f5ede1]/50">{PLAN_LABELS[p.plan]} · {p.amount.toLocaleString("fr-FR")}F</p>
+                  <span className="text-xs font-mono text-[#2b1620]">{p.phone}</span>
+                  <p className="text-[10px] text-[#2b1620]/50">{PLAN_LABELS[p.plan]} · {p.amount.toLocaleString("fr-FR")}F</p>
                 </div>
                 <button
                   onClick={() => handleActivate(p.phone)}
@@ -173,16 +173,16 @@ export default function AdminDashboard({ token }: { token: string }) {
 
       {/* Liste des comptes */}
       <div className="premium-card rounded-2xl p-5">
-        <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#f5ede1]/50 font-semibold mb-3">
+        <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#2b1620]/50 font-semibold mb-3">
           <Users className="w-3.5 h-3.5" /> Tous les comptes ({accounts.length})
         </h3>
         <div className="space-y-1.5">
           {accounts.map((a) => (
             <div key={a.phone} className="flex items-center justify-between text-xs py-2 border-b border-white/5">
-              <span className="font-mono text-[#f5ede1]">{a.phone}</span>
+              <span className="font-mono text-[#2b1620]">{a.phone}</span>
               <div className="flex items-center gap-2">
-                {a.isAdmin && <span className="text-[9px] font-bold uppercase bg-[#d6407a]/20 text-[#f28fb0] px-1.5 py-0.5 rounded">Admin</span>}
-                <span className="text-[#f5ede1]/50">{PLAN_LABELS[a.plan] || a.plan}</span>
+                {a.isAdmin && <span className="text-[9px] font-bold uppercase bg-[#d6407a]/20 text-[#d6407a] px-1.5 py-0.5 rounded">Admin</span>}
+                <span className="text-[#2b1620]/50">{PLAN_LABELS[a.plan] || a.plan}</span>
               </div>
             </div>
           ))}
