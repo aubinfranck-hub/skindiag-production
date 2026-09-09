@@ -244,6 +244,10 @@ async function initDatabase(): Promise<void> {
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS is_partner BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS fragrance_free BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '';
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS original_price_fcfa INTEGER;
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS is_new BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS rating_avg NUMERIC(2,1) NOT NULL DEFAULT 4.3;
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 6;
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -337,6 +341,30 @@ async function initDatabase(): Promise<void> {
     await pool.query(
       "UPDATE beauty_products SET image_url = $1 WHERE category = $2 AND image_url = ''",
       [url, cat]
+    );
+  }
+
+  // Données réalistes de vitrine (promos, nouveautés, notes) — appliquées une seule fois par
+  // produit (WHERE rating_count = 6, valeur par défaut), n'écrase jamais une valeur déjà modifiée.
+  const showcaseData: Record<string, { originalPrice?: number; isNew?: boolean; rating: number; count: number }> = {
+    "Cetaphil Gentle Skin Cleanser": { rating: 4.4, count: 18 },
+    "CeraVe Hydrating Cleanser": { originalPrice: 12000, rating: 4.6, count: 27 },
+    "La Roche-Posay Toleriane Hydrating Cleansing Milk": { rating: 4.3, count: 9 },
+    "CeraVe Facial Moisturizing Lotion": { originalPrice: 14000, isNew: true, rating: 4.7, count: 21 },
+    "Cetaphil Rich Hydrating Night Cream": { rating: 4.2, count: 5 },
+    "La Roche-Posay Toleriane Fluid": { rating: 4.1, count: 8 },
+    "BeautyCI Shea Butter Moisturizer": { rating: 4.5, count: 14 },
+    "Vitamin C Serum 20% with Hyaluronic Acid": { originalPrice: 8000, rating: 4.4, count: 16 },
+    "Hyaluronic Acid Serum 99%": { rating: 4.6, count: 11 },
+    "Neutrogena Ultra Sheer Dry-Touch SPF 30": { isNew: true, rating: 4.5, count: 7 },
+    "The Ordinary Niacinamide 10% + Zinc 1%": { originalPrice: 9000, isNew: true, rating: 4.8, count: 32 },
+    "The Ordinary Azelaic Acid Suspension 10%": { rating: 4.3, count: 12 },
+  };
+  for (const [name, data] of Object.entries(showcaseData)) {
+    await pool.query(
+      `UPDATE beauty_products SET original_price_fcfa = $1, is_new = $2, rating_avg = $3, rating_count = $4
+       WHERE name = $5 AND rating_count = 6`,
+      [data.originalPrice || null, data.isNew === true, data.rating, data.count, name]
     );
   }
 

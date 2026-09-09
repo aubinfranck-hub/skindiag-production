@@ -64,6 +64,10 @@ export interface Product {
   is_partner: boolean;
   fragrance_free: boolean;
   image_url: string;
+  original_price_fcfa: number | null;
+  is_new: boolean;
+  rating_avg: number;
+  rating_count: number;
   matchScore: number;
   actifsCorrespondants: string[];
 }
