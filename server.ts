@@ -712,6 +712,33 @@ app.get("/api/skindiag/products", async (req, res) => {
   res.json({ success: true, products: rows });
 });
 
+app.post("/api/admin/products", requireAdminAuth, async (req, res) => {
+  if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
+  const { name, brand, category, price_fcfa, actifs, inci_composition, is_sponsored, is_partner, fragrance_free, suitable_for } = req.body;
+  if (!name || !brand || !category || !price_fcfa) {
+    return res.status(400).json({ success: false, message: "Nom, marque, catégorie et prix requis." });
+  }
+  try {
+    await pool.query(
+      `INSERT INTO beauty_products (name, brand, category, price_fcfa, suitable_for, availability_abidjan, actifs, inci_composition, is_sponsored, is_partner, fragrance_free)
+       VALUES ($1,$2,$3,$4,$5,true,$6,$7,$8,$9,$10)
+       ON CONFLICT (name) DO UPDATE SET brand=$2, category=$3, price_fcfa=$4, suitable_for=$5, actifs=$6, inci_composition=$7, is_sponsored=$8, is_partner=$9, fragrance_free=$10`,
+      [name, brand, category, price_fcfa, suitable_for || ["all"], actifs || [], inci_composition || "", is_sponsored === true, is_partner === true, fragrance_free === true]
+    );
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("[DB] Échec création/mise à jour produit:", err.message);
+    res.status(500).json({ success: false, message: "Échec de l'enregistrement du produit." });
+  }
+});
+
+app.post("/api/admin/products/:id/sponsor", requireAdminAuth, async (req, res) => {
+  if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
+  const { is_sponsored, is_partner } = req.body;
+  await pool.query("UPDATE beauty_products SET is_sponsored = $1, is_partner = $2 WHERE id = $3", [is_sponsored === true, is_partner === true, req.params.id]);
+  res.json({ success: true });
+});
+
 async function startServer() {
   await initDatabase();
 

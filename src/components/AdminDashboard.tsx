@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { UserPlus, Users, Check, X, RefreshCw, Truck } from "lucide-react";
+import { UserPlus, Users, Check, X, RefreshCw, Truck, Package, Star } from "lucide-react";
 
 interface Account {
   phone: string;
@@ -28,6 +28,21 @@ interface Order {
   created_at: number;
 }
 
+interface ProductRow {
+  id: number;
+  name: string;
+  brand: string;
+  category: string;
+  price_fcfa: number;
+  actifs: string[];
+  inci_composition: string;
+  is_sponsored: boolean;
+  is_partner: boolean;
+  availability_abidjan: boolean;
+}
+
+const ACTIFS_DISPONIBLES = ["vitamine_c", "niacinamide", "acide_hyaluronique", "ceramides", "glycerine", "acide_azelaique", "beurre_de_karite", "protection_solaire", "retinoides", "uree"];
+
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
   confirmed: "Confirmée",
@@ -48,6 +63,7 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [pending, setPending] = useState<PendingActivation[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [phone, setPhone] = useState("");
@@ -57,20 +73,34 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [createdInfo, setCreatedInfo] = useState<{ phone: string; password: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [prodName, setProdName] = useState("");
+  const [prodBrand, setProdBrand] = useState("");
+  const [prodCategory, setProdCategory] = useState("serum");
+  const [prodPrice, setProdPrice] = useState("");
+  const [prodActifs, setProdActifs] = useState<string[]>([]);
+  const [prodInci, setProdInci] = useState("");
+  const [prodSponsored, setProdSponsored] = useState(false);
+  const [prodPartner, setProdPartner] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [productError, setProductError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [accRes, pendRes, ordersRes] = await Promise.all([
+      const [accRes, pendRes, ordersRes, productsRes] = await Promise.all([
         fetch("/api/admin/accounts", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/admin/pending-activations", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/skindiag/products"),
       ]);
       const accData = await accRes.json();
       const pendData = await pendRes.json();
       const ordersData = await ordersRes.json();
+      const productsData = await productsRes.json();
       if (accData.success) setAccounts(accData.accounts);
       if (pendData.success) setPending(pendData.pending);
       if (ordersData.success) setOrders(ordersData.orders);
+      if (productsData.success) setProducts(productsData.products);
     } catch {
       // silencieux, l'utilisateur peut rafraîchir
     } finally {
@@ -79,6 +109,51 @@ export default function AdminDashboard({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  const toggleSponsor = async (p: ProductRow, field: "is_sponsored" | "is_partner") => {
+    try {
+      await fetch(`/api/admin/products/${p.id}/sponsor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          is_sponsored: field === "is_sponsored" ? !p.is_sponsored : p.is_sponsored,
+          is_partner: field === "is_partner" ? !p.is_partner : p.is_partner,
+        }),
+      });
+      load();
+    } catch {
+      // silencieux
+    }
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProduct(true);
+    setProductError(null);
+    try {
+      const res = await fetch("/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: prodName, brand: prodBrand, category: prodCategory,
+          price_fcfa: Number(prodPrice), actifs: prodActifs, inci_composition: prodInci,
+          is_sponsored: prodSponsored, is_partner: prodPartner,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProdName(""); setProdBrand(""); setProdPrice(""); setProdActifs([]); setProdInci("");
+        setProdSponsored(false); setProdPartner(false);
+        load();
+      } else {
+        setProductError(data.message || "Échec de l'enregistrement.");
+      }
+    } catch {
+      setProductError("Erreur réseau.");
+    } finally {
+      setSavingProduct(false);
+    }
+  };
 
   const updateOrderStatus = async (orderId: number, status: string) => {
     try {
@@ -207,6 +282,75 @@ export default function AdminDashboard({ token }: { token: string }) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Produits & sponsoring */}
+      <div className="premium-card rounded-2xl p-5">
+        <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#2b1620]/50 font-semibold mb-3">
+          <Package className="w-3.5 h-3.5" /> Ajouter un produit
+        </h3>
+        <form onSubmit={handleCreateProduct} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <input required placeholder="Nom du produit" value={prodName} onChange={(e) => setProdName(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input required placeholder="Marque" value={prodBrand} onChange={(e) => setProdBrand(e.target.value)}
+            className="bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input required type="number" placeholder="Prix (FCFA)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)}
+            className="bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <select value={prodCategory} onChange={(e) => setProdCategory(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]">
+            <option value="cleanser">Nettoyant</option>
+            <option value="serum">Sérum</option>
+            <option value="moisturizer">Crème hydratante</option>
+            <option value="sunscreen">Protection solaire</option>
+          </select>
+          <textarea placeholder="Composition INCI complète" value={prodInci} onChange={(e) => setProdInci(e.target.value)} rows={2}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a] resize-none" />
+
+          <div className="sm:col-span-2">
+            <p className="text-[10px] text-[#2b1620]/50 font-medium mb-1.5">Actifs contenus (utilisés pour le matching)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {ACTIFS_DISPONIBLES.map((a) => (
+                <button key={a} type="button"
+                  onClick={() => setProdActifs((cur) => cur.includes(a) ? cur.filter((x) => x !== a) : [...cur, a])}
+                  className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition cursor-pointer ${
+                    prodActifs.includes(a) ? "bg-[#d6407a] text-white" : "bg-white text-[#2b1620]/60 border border-[#2b1620]/10"
+                  }`}>
+                  {a.replace(/_/g, " ")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-xs text-[#2b1620]/70 cursor-pointer">
+            <input type="checkbox" checked={prodSponsored} onChange={(e) => setProdSponsored(e.target.checked)} /> Sponsorisé ⭐
+          </label>
+          <label className="flex items-center gap-2 text-xs text-[#2b1620]/70 cursor-pointer">
+            <input type="checkbox" checked={prodPartner} onChange={(e) => setProdPartner(e.target.checked)} /> Partenaire
+          </label>
+
+          <button type="submit" disabled={savingProduct}
+            className="sm:col-span-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-50 text-white font-semibold text-xs py-2.5 rounded-xl transition cursor-pointer">
+            {savingProduct ? "Enregistrement..." : "Enregistrer le produit"}
+          </button>
+        </form>
+        {productError && <p className="text-xs text-rose-500 mt-2">{productError}</p>}
+
+        <div className="mt-4 pt-4 border-t border-[#2b1620]/[0.06] space-y-2">
+          {products.map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-2 bg-[#fdf1f5] rounded-xl p-3">
+              <div className="min-w-0">
+                <span className="text-xs font-semibold text-[#2b1620] block truncate">{p.name}</span>
+                <span className="text-[10px] text-[#2b1620]/50">{p.brand} · {p.price_fcfa.toLocaleString("fr-FR")}F · {p.actifs.join(", ") || "aucun actif renseigné"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={() => toggleSponsor(p, "is_sponsored")}
+                  className={`text-[10px] font-bold px-2 py-1 rounded-full cursor-pointer flex items-center gap-1 ${p.is_sponsored ? "bg-[#d6407a] text-white" : "bg-white text-[#2b1620]/40 border border-[#2b1620]/10"}`}>
+                  <Star className="w-2.5 h-2.5" /> {p.is_sponsored ? "Sponsorisé" : "Activer"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Commandes */}
