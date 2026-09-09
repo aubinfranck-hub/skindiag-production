@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { UserPlus, Users, Check, X, RefreshCw } from "lucide-react";
+import { UserPlus, Users, Check, X, RefreshCw, Truck } from "lucide-react";
 
 interface Account {
   phone: string;
@@ -15,6 +15,27 @@ interface PendingActivation {
   requestedAt: number;
 }
 
+interface Order {
+  id: number;
+  phone: string;
+  product_name: string;
+  price_fcfa: number;
+  quantity: number;
+  delivery_name: string;
+  delivery_phone: string;
+  delivery_address: string;
+  status: string;
+  created_at: number;
+}
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  pending: "En attente",
+  confirmed: "Confirmée",
+  shipped: "Expédiée",
+  delivered: "Livrée",
+  cancelled: "Annulée",
+};
+
 const PLAN_LABELS: Record<string, string> = {
   free_trial: "Essai gratuit",
   free_expired: "Expiré",
@@ -26,6 +47,7 @@ const PLAN_LABELS: Record<string, string> = {
 export default function AdminDashboard({ token }: { token: string }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [pending, setPending] = useState<PendingActivation[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [phone, setPhone] = useState("");
@@ -38,14 +60,17 @@ export default function AdminDashboard({ token }: { token: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [accRes, pendRes] = await Promise.all([
+      const [accRes, pendRes, ordersRes] = await Promise.all([
         fetch("/api/admin/accounts", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/admin/pending-activations", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const accData = await accRes.json();
       const pendData = await pendRes.json();
+      const ordersData = await ordersRes.json();
       if (accData.success) setAccounts(accData.accounts);
       if (pendData.success) setPending(pendData.pending);
+      if (ordersData.success) setOrders(ordersData.orders);
     } catch {
       // silencieux, l'utilisateur peut rafraîchir
     } finally {
@@ -54,6 +79,19 @@ export default function AdminDashboard({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  const updateOrderStatus = async (orderId: number, status: string) => {
+    try {
+      await fetch(`/api/admin/orders/${orderId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      });
+      load();
+    } catch {
+      // silencieux
+    }
+  };
 
   const generatePassword = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -165,6 +203,44 @@ export default function AdminDashboard({ token }: { token: string }) {
                 >
                   <Check className="w-3.5 h-3.5" /> Activer
                 </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Commandes */}
+      <div className="premium-card rounded-2xl p-5">
+        <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#2b1620]/50 font-semibold mb-3">
+          <Truck className="w-3.5 h-3.5" /> Commandes ({orders.length})
+        </h3>
+        {orders.length === 0 ? (
+          <p className="text-xs text-[#2b1620]/40">Aucune commande pour l'instant.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {orders.map((o) => (
+              <div key={o.id} className="bg-[#fdf1f5] rounded-xl p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-sm font-semibold text-[#2b1620] block">{o.product_name} × {o.quantity}</span>
+                    <span className="text-[11px] text-[#2b1620]/50">{o.delivery_name} · {o.delivery_phone}</span>
+                    <p className="text-[11px] text-[#2b1620]/50 mt-0.5">{o.delivery_address}</p>
+                  </div>
+                  <span className="text-sm font-bold text-[#d6407a] shrink-0">{(o.price_fcfa * o.quantity).toLocaleString("fr-FR")} F</span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                  {["pending", "confirmed", "shipped", "delivered", "cancelled"].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => updateOrderStatus(o.id, s)}
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition cursor-pointer ${
+                        o.status === s ? "bg-[#d6407a] text-white" : "bg-white text-[#2b1620]/50 hover:bg-[#2b1620]/[0.04]"
+                      }`}
+                    >
+                      {ORDER_STATUS_LABELS[s]}
+                    </button>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

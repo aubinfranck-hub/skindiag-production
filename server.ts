@@ -434,7 +434,7 @@ app.post("/api/user/request-activation", requireAuth, (req: any, res) => {
 
 app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req: any, res) => {
   try {
-    const { zone, image, mimeType } = req.body;
+    const { zone, image, mimeType, questionnaire } = req.body;
     if (!image || !mimeType) {
       return res.status(400).json({ success: false, message: "Photo requise pour l'analyse." });
     }
@@ -487,6 +487,17 @@ Ne recommande JAMAIS un produit directement. Le raisonnement est TOUJOURS : obse
 ${isVideo
   ? `Une COURTE VIDÉO de la zone "${zone}" t'est fournie. Observe-la sur toute sa durée. Si l'éclairage/cadrage varie trop pour juger correctement, indique-le dans qualiteImage.`
   : `Une PHOTO de la zone "${zone}" t'est fournie.`}
+
+═══ CONTEXTE DÉCLARÉ PAR L'UTILISATEUR (à croiser avec l'image, jamais à ignorer) ═══
+${questionnaire ? `
+- Depuis quand : ${questionnaire.duree}
+- Démangeaisons : ${questionnaire.demange}
+- Douleur : ${questionnaire.douloureux}
+- Zone agrandie récemment : ${questionnaire.aggrandie}
+- Nouveau produit utilisé récemment : ${questionnaire.nouveauProduit}
+- Blessure/irritation avant l'apparition : ${questionnaire.blessureAvant}
+Si la douleur, l'agrandissement rapide ou une évolution inhabituelle sont rapportés, cela renforce la nécessité d'une orientation vers un professionnel (recommandationProfessionnel=true).` : "Aucun contexte déclaré fourni."}
+
 Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
 
     const actifsEnum = ["vitamine_c", "niacinamide", "acide_hyaluronique", "ceramides", "glycerine", "acide_azelaique", "beurre_de_karite", "protection_solaire", "retinoides", "uree"];

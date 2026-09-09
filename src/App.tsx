@@ -6,6 +6,7 @@ import ZoneSelector from "./components/ZoneSelector";
 import ModeChoice from "./components/ModeChoice";
 import PhotoCapture from "./components/PhotoCapture";
 import VideoCapture from "./components/VideoCapture";
+import Questionnaire, { QuestionnaireAnswers } from "./components/Questionnaire";
 import ResultsView from "./components/ResultsView";
 import LoginScreen from "./components/LoginScreen";
 import SubscriptionPanel from "./components/SubscriptionPanel";
@@ -13,7 +14,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import { SkinZone, SkinAnalysisResult } from "./types";
 
 type Tab = "diagnostic" | "historique" | "abonnement" | "admin" | "profil";
-type Step = "category" | "zone" | "mode" | "capture" | "resultat";
+type Step = "category" | "zone" | "mode" | "capture" | "questionnaire" | "resultat";
 
 interface UserStatus {
   isAdmin: boolean;
@@ -82,19 +83,29 @@ export default function App() {
     }
   }, [sessionToken, loadStatus, loadHistory]);
 
+  const [pendingImage, setPendingImage] = useState<{ data: string; mime: string } | null>(null);
+
   const handleLoginSuccess = (token: string) => {
     localStorage.setItem("skindiag_token", token);
     setSessionToken(token);
   };
 
-  const handleAnalyze = async (base64: string, mimeType: string) => {
+  // La capture (photo/vidéo) ne lance plus l'analyse directement : elle passe d'abord
+  // par le questionnaire, pour croiser image + symptômes déclarés (plus fiable qu'une photo seule).
+  const handleCaptured = (base64: string, mimeType: string) => {
+    setPendingImage({ data: base64, mime: mimeType });
+    setStep("questionnaire");
+  };
+
+  const handleAnalyze = async (answers: QuestionnaireAnswers) => {
+    if (!pendingImage) return;
     setIsLoading(true);
     setQuotaMessage(null);
     try {
       const res = await fetch("/api/skindiag/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
-        body: JSON.stringify({ zone, image: base64, mimeType }),
+        body: JSON.stringify({ zone, image: pendingImage.data, mimeType: pendingImage.mime, questionnaire: answers }),
       });
       if (res.status === 401) { handleLogout(); return; }
       const data = await res.json();
@@ -106,6 +117,7 @@ export default function App() {
       if (data.success) {
         if (data.qualityRejected) {
           alert(data.qualiteImage?.message || "La qualité de la photo ne permet pas une analyse fiable. Reprenez la photo.");
+          setStep("capture");
           return;
         }
         setResult(data.result);
@@ -126,6 +138,7 @@ export default function App() {
 
   const restart = () => {
     setResult(null);
+    setPendingImage(null);
     setStep("category");
   };
 
@@ -197,10 +210,13 @@ export default function App() {
               />
             )}
             {step === "capture" && captureMode === "photo" && (
-              <PhotoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleAnalyze} isLoading={isLoading} />
+              <PhotoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleCaptured} isLoading={false} />
             )}
             {step === "capture" && captureMode === "video" && (
-              <VideoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleAnalyze} isLoading={isLoading} />
+              <VideoCapture zone={zone} onBack={() => setStep("mode")} onCapture={handleCaptured} isLoading={false} />
+            )}
+            {step === "questionnaire" && (
+              <Questionnaire onBack={() => setStep("capture")} onSubmit={handleAnalyze} isLoading={isLoading} />
             )}
             {step === "resultat" && result && sessionToken && <ResultsView result={result} token={sessionToken} onRestart={restart} />}
           </>
