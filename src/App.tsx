@@ -141,8 +141,7 @@ export default function App() {
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:shrink-0 bg-white/70 backdrop-blur-sm border-r border-[#2b1620]/[0.07] min-h-screen p-6">
         <div className="flex items-center gap-3 mb-10">
-          <img src="/icon-192.png" alt="SkinDiag" className="w-10 h-10 rounded-xl object-cover" />
-          <span className="font-display text-lg font-semibold">SkinDiag</span>
+          <img src="/icon-192.png" alt="SkinDiag" className="w-16 h-16 object-contain" />
         </div>
         <nav className="space-y-1.5">
           {tabs.map((t) => (
@@ -160,9 +159,11 @@ export default function App() {
       </aside>
 
       {/* Mobile header */}
-      <header className="lg:hidden flex items-center gap-3 px-5 py-4 border-b border-[#2b1620]/[0.07]">
-        <img src="/icon-192.png" alt="SkinDiag" className="w-8 h-8 rounded-lg object-cover" />
-        <span className="font-display text-base font-semibold">SkinDiag</span>
+      <header className="lg:hidden flex items-center justify-between gap-3 px-5 py-3 border-b border-[#2b1620]/[0.07] bg-white/40">
+        <img src="/icon-192.png" alt="SkinDiag" className="w-16 h-16 -my-2 object-contain" />
+        <span className="text-[11px] text-[#d6407a] font-medium text-right leading-tight max-w-[110px]">
+          Une peau saine à chaque étape de votre vie
+        </span>
       </header>
 
       {/* Contenu principal */}
