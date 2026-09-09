@@ -10,8 +10,8 @@ interface ResultsViewProps {
 export default function ResultsView({ result, onRestart }: ResultsViewProps) {
   return (
     <div className="animate-fade-in">
-      <button onClick={onRestart} className="flex items-center gap-1.5 text-xs text-[#2b1620]/60 hover:text-[#2b1620] mb-4 cursor-pointer">
-        <ArrowLeft className="w-3.5 h-3.5" /> Nouvelle analyse
+      <button onClick={onRestart} className="flex items-center gap-1.5 text-xs font-semibold text-[#d6407a] bg-white shadow-[0_4px_14px_-6px_rgba(214,64,122,0.4)] rounded-full px-3.5 py-2 mb-4 hover:-translate-y-0.5 transition cursor-pointer">
+        <ArrowLeft className="w-4 h-4" /> Nouvelle analyse
       </button>
 
       {/* Score global */}

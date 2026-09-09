@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Scan, History, User, LogOut, CreditCard, ShieldCheck } from "lucide-react";
 import CategorySelector from "./components/CategorySelector";
+import SplashScreen from "./components/SplashScreen";
 import ZoneSelector from "./components/ZoneSelector";
 import ModeChoice from "./components/ModeChoice";
 import PhotoCapture from "./components/PhotoCapture";
@@ -23,6 +24,7 @@ interface UserStatus {
 
 export default function App() {
   const [sessionToken, setSessionToken] = useState<string | null>(() => localStorage.getItem("skindiag_token"));
+  const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("diagnostic");
   const [step, setStep] = useState<Step>("category");
   const [categoryId, setCategoryId] = useState<string>("visage_cou");
@@ -122,6 +124,10 @@ export default function App() {
     setResult(null);
     setStep("category");
   };
+
+  if (showSplash) {
+    return <SplashScreen onFinished={() => setShowSplash(false)} />;
+  }
 
   if (!sessionToken) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
