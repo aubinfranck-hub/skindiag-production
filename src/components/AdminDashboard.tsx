@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { UserPlus, Users, Check, X, RefreshCw, Truck, Package, Star } from "lucide-react";
+import { UserPlus, Users, Check, X, RefreshCw, Truck, Package, Star, MessageCircle } from "lucide-react";
 
 interface Account {
   phone: string;
@@ -252,6 +252,15 @@ export default function AdminDashboard({ token }: { token: string }) {
             <p className="text-[11px] text-emerald-300 font-bold uppercase mb-1">Compte créé — communiquez ceci :</p>
             <p className="text-xs text-[#2b1620]">Numéro : <strong className="font-mono">{createdInfo.phone}</strong></p>
             <p className="text-xs text-[#2b1620]">Mot de passe : <strong className="font-mono text-base">{createdInfo.password}</strong></p>
+            <a
+              href={`https://wa.me/${createdInfo.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                `Bonjour ! Votre compte SkinDiag a été créé.\n\nNuméro : ${createdInfo.phone}\nMot de passe : ${createdInfo.password}\n\nConnectez-vous sur skindiag-production.onrender.com`
+              )}`}
+              target="_blank" rel="noopener noreferrer"
+              className="w-full mt-2.5 flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1ebe5a] text-white text-xs font-semibold py-2.5 rounded-lg transition cursor-pointer"
+            >
+              <MessageCircle className="w-3.5 h-3.5" /> Envoyer par WhatsApp
+            </a>
           </div>
         )}
       </div>
