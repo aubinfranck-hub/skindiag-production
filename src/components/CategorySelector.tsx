@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronRight, HelpCircle } from "lucide-react";
 import { ZONE_CATEGORIES } from "../types";
+import PromoBanners from "./PromoBanners";
 
 interface CategorySelectorProps {
   onSelectCategory: (categoryId: string) => void;
@@ -8,8 +9,27 @@ interface CategorySelectorProps {
 }
 
 export default function CategorySelector({ onSelectCategory, onSelectAutre }: CategorySelectorProps) {
+  // Le thème promotionnel est entièrement optionnel : si désactivé (par défaut), l'écran
+  // standard ci-dessous reste rigoureusement identique — rien n'est modifié pour l'utilisateur.
+  const [promoEnabled, setPromoEnabled] = useState(false);
+  const [promoBanners, setPromoBanners] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/skindiag/promo-theme")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setPromoEnabled(data.enabled);
+          setPromoBanners(data.banners);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="animate-fade-in">
+      {promoEnabled && <PromoBanners banners={promoBanners} />}
+
       <h2 className="text-xl sm:text-2xl font-display font-semibold text-[#2b1620] mb-1">Quelle zone souhaitez-vous analyser ?</h2>
       <p className="text-xs sm:text-sm text-[#2b1620]/60 mb-4">Choisissez une catégorie pour commencer.</p>
 

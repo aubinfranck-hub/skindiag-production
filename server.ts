@@ -135,6 +135,16 @@ const usageTracking = new Map<string, { count: number; periodStart: number }>();
 // Demandes d'activation en attente de validation manuelle (paiement Wave)
 const pendingActivations = new Map<string, { phone: string; plan: string; amount: number; requestedAt: number }>();
 
+// Thème promotionnel (bandeaux de marques partenaires) — activable/désactivable depuis l'admin,
+// sans jamais modifier l'affichage standard quand désactivé.
+interface PromoBanner {
+  id: number; brandName: string; title: string; subtitle: string; ctaText: string;
+  linkUrl: string; imageUrl: string; colorFrom: string; colorTo: string; textColor: string;
+  sortOrder: number; active: boolean;
+}
+let promoBanners: PromoBanner[] = [];
+let promoThemeEnabled = false;
+
 function getEffectivePlan(phone: string): string {
   const record = userPlans.get(phone);
   if (!record) return "free_trial";
@@ -250,6 +260,25 @@ async function initDatabase(): Promise<void> {
       delivery_address TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
       created_at BIGINT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS promo_banners (
+      id SERIAL PRIMARY KEY,
+      brand_name TEXT NOT NULL,
+      title TEXT NOT NULL,
+      subtitle TEXT NOT NULL DEFAULT '',
+      cta_text TEXT NOT NULL DEFAULT 'Découvrir la gamme',
+      link_url TEXT NOT NULL DEFAULT '',
+      image_url TEXT NOT NULL DEFAULT '',
+      color_from TEXT NOT NULL DEFAULT '#d6407a',
+      color_to TEXT NOT NULL DEFAULT '#8a2a54',
+      text_color TEXT NOT NULL DEFAULT '#ffffff',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_at BIGINT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
     );
   `);
 
@@ -402,6 +431,16 @@ async function initDatabase(): Promise<void> {
   }
 
   console.log("[DB] Produits vérifiés/migrés (actifs, composition, sponsoring).");
+
+  const bannersRes = await pool.query("SELECT * FROM promo_banners ORDER BY sort_order ASC, id ASC");
+  promoBanners = bannersRes.rows.map((r) => ({
+    id: r.id, brandName: r.brand_name, title: r.title, subtitle: r.subtitle, ctaText: r.cta_text,
+    linkUrl: r.link_url, imageUrl: r.image_url, colorFrom: r.color_from, colorTo: r.color_to,
+    textColor: r.text_color, sortOrder: r.sort_order, active: r.active,
+  }));
+  const themeSetting = await pool.query("SELECT value FROM app_settings WHERE key = 'promo_theme_enabled'");
+  promoThemeEnabled = themeSetting.rows[0]?.value === "true";
+  console.log(`[DB] ${promoBanners.length} bandeau(x) promo, thème ${promoThemeEnabled ? "activé" : "désactivé"}.`);
 }
 
 app.use(cors());
@@ -902,6 +941,66 @@ app.post("/api/admin/orders/:id/status", requireAdminAuth, async (req, res) => {
   if (!pool) return res.status(503).json({ success: false });
   const { status } = req.body;
   await pool.query("UPDATE orders SET status = $1 WHERE id = $2", [status, req.params.id]);
+  res.json({ success: true });
+});
+
+// --- Thème promotionnel : lecture publique, gestion admin ---
+app.get("/api/skindiag/promo-theme", (req, res) => {
+  res.json({ success: true, enabled: promoThemeEnabled, banners: promoBanners.filter((b) => b.active) });
+});
+
+app.post("/api/admin/promo-theme/toggle", requireAdminAuth, async (req, res) => {
+  promoThemeEnabled = req.body.enabled === true;
+  if (pool) {
+    await pool.query(
+      `INSERT INTO app_settings (key, value) VALUES ('promo_theme_enabled', $1)
+       ON CONFLICT (key) DO UPDATE SET value = $1`,
+      [String(promoThemeEnabled)]
+    ).catch((err) => console.error("[DB] Échec sauvegarde réglage thème:", err.message));
+  }
+  res.json({ success: true, enabled: promoThemeEnabled });
+});
+
+app.get("/api/admin/promo-banners", requireAdminAuth, (req, res) => {
+  res.json({ success: true, banners: promoBanners });
+});
+
+app.post("/api/admin/promo-banners", requireAdminAuth, async (req, res) => {
+  const { brandName, title, subtitle, ctaText, linkUrl, imageUrl, colorFrom, colorTo, textColor } = req.body;
+  if (!brandName || !title) return res.status(400).json({ success: false, message: "Marque et titre requis." });
+  if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO promo_banners (brand_name, title, subtitle, cta_text, link_url, image_url, color_from, color_to, text_color, sort_order, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      [brandName, title, subtitle || "", ctaText || "Découvrir la gamme", linkUrl || "", imageUrl || "",
+       colorFrom || "#d6407a", colorTo || "#8a2a54", textColor || "#ffffff", promoBanners.length, Date.now()]
+    );
+    promoBanners.push({
+      id: rows[0].id, brandName, title, subtitle: subtitle || "", ctaText: ctaText || "Découvrir la gamme",
+      linkUrl: linkUrl || "", imageUrl: imageUrl || "", colorFrom: colorFrom || "#d6407a",
+      colorTo: colorTo || "#8a2a54", textColor: textColor || "#ffffff", sortOrder: promoBanners.length, active: true,
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("[DB] Échec création bandeau:", err.message);
+    res.status(500).json({ success: false, message: "Échec de l'enregistrement." });
+  }
+});
+
+app.post("/api/admin/promo-banners/:id/toggle", requireAdminAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const banner = promoBanners.find((b) => b.id === id);
+  if (!banner) return res.status(404).json({ success: false, message: "Bandeau introuvable." });
+  banner.active = !banner.active;
+  await pool?.query("UPDATE promo_banners SET active = $1 WHERE id = $2", [banner.active, id]).catch(() => {});
+  res.json({ success: true, active: banner.active });
+});
+
+app.delete("/api/admin/promo-banners/:id", requireAdminAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  promoBanners = promoBanners.filter((b) => b.id !== id);
+  await pool?.query("DELETE FROM promo_banners WHERE id = $1", [id]).catch(() => {});
   res.json({ success: true });
 });
 

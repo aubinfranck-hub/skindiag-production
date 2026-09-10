@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { UserPlus, Users, Check, X, RefreshCw, Truck, Package, Star, MessageCircle } from "lucide-react";
+import { UserPlus, Users, Check, X, RefreshCw, Truck, Package, Star, MessageCircle, Megaphone, Trash2 } from "lucide-react";
 
 interface Account {
   phone: string;
@@ -224,6 +224,82 @@ export default function AdminDashboard({ token }: { token: string }) {
     }
   };
 
+  const [promoEnabled, setPromoEnabled] = useState(false);
+  const [banners, setBanners] = useState<any[]>([]);
+  const [bannerBrand, setBannerBrand] = useState("");
+  const [bannerTitle, setBannerTitle] = useState("");
+  const [bannerSubtitle, setBannerSubtitle] = useState("");
+  const [bannerCta, setBannerCta] = useState("Découvrir la gamme");
+  const [bannerLink, setBannerLink] = useState("");
+  const [bannerImage, setBannerImage] = useState("");
+  const [bannerColorFrom, setBannerColorFrom] = useState("#d6407a");
+  const [bannerColorTo, setBannerColorTo] = useState("#8a2a54");
+  const [savingBanner, setSavingBanner] = useState(false);
+
+  const loadPromoTheme = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/promo-banners", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) setBanners(data.banners);
+      const themeRes = await fetch("/api/skindiag/promo-theme");
+      const themeData = await themeRes.json();
+      if (themeData.success) setPromoEnabled(themeData.enabled);
+    } catch {
+      // silencieux
+    }
+  }, [token]);
+
+  useEffect(() => { loadPromoTheme(); }, [loadPromoTheme]);
+
+  const togglePromoTheme = async () => {
+    try {
+      const res = await fetch("/api/admin/promo-theme/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ enabled: !promoEnabled }),
+      });
+      const data = await res.json();
+      if (data.success) setPromoEnabled(data.enabled);
+    } catch {
+      // silencieux
+    }
+  };
+
+  const handleCreateBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingBanner(true);
+    try {
+      const res = await fetch("/api/admin/promo-banners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          brandName: bannerBrand, title: bannerTitle, subtitle: bannerSubtitle,
+          ctaText: bannerCta, linkUrl: bannerLink, imageUrl: bannerImage,
+          colorFrom: bannerColorFrom, colorTo: bannerColorTo,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBannerBrand(""); setBannerTitle(""); setBannerSubtitle(""); setBannerLink(""); setBannerImage("");
+        loadPromoTheme();
+      }
+    } catch {
+      // silencieux
+    } finally {
+      setSavingBanner(false);
+    }
+  };
+
+  const toggleBanner = async (id: number) => {
+    await fetch(`/api/admin/promo-banners/${id}/toggle`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    loadPromoTheme();
+  };
+
+  const deleteBanner = async (id: number) => {
+    await fetch(`/api/admin/promo-banners/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    loadPromoTheme();
+  };
+
   const totalRevenue = orders
     .filter((o) => o.status === "delivered")
     .reduce((sum, o) => sum + o.price_fcfa * o.quantity, 0);
@@ -300,6 +376,73 @@ export default function AdminDashboard({ token }: { token: string }) {
           <span className="text-lg font-bold text-[#2b1620] block">{pending.length}</span>
           <span className="text-[10px] text-[#2b1620]/50">Paiements en attente</span>
         </div>
+      </div>
+
+      {/* Thème promotionnel */}
+      <div className="premium-card rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#2b1620]/50 font-semibold">
+            <Megaphone className="w-3.5 h-3.5" /> Thème promotionnel
+          </h3>
+          <button
+            onClick={togglePromoTheme}
+            className={`relative w-11 h-6 rounded-full transition cursor-pointer ${promoEnabled ? "bg-[#d6407a]" : "bg-[#2b1620]/15"}`}
+          >
+            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${promoEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+        <p className="text-[11px] text-[#2b1620]/50 mb-3">
+          {promoEnabled ? "Activé — les bandeaux ci-dessous s'affichent sur l'écran principal." : "Désactivé — l'écran principal reste standard, sans bandeau."}
+        </p>
+
+        <form onSubmit={handleCreateBanner} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-3 border-t border-[#2b1620]/[0.06]">
+          <input placeholder="Nom de la marque" required value={bannerBrand} onChange={(e) => setBannerBrand(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input placeholder="Titre (ex: Une peau plus belle)" required value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input placeholder="Sous-titre (optionnel)" value={bannerSubtitle} onChange={(e) => setBannerSubtitle(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input placeholder="Texte du bouton" value={bannerCta} onChange={(e) => setBannerCta(e.target.value)}
+            className="bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input placeholder="Lien (optionnel)" value={bannerLink} onChange={(e) => setBannerLink(e.target.value)}
+            className="bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input placeholder="URL image (optionnel)" value={bannerImage} onChange={(e) => setBannerImage(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-[#2b1620]/50">Couleur 1</label>
+            <input type="color" value={bannerColorFrom} onChange={(e) => setBannerColorFrom(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-[#2b1620]/50">Couleur 2</label>
+            <input type="color" value={bannerColorTo} onChange={(e) => setBannerColorTo(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+          </div>
+          <button type="submit" disabled={savingBanner}
+            className="sm:col-span-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-50 text-white font-semibold text-xs py-2.5 rounded-xl transition cursor-pointer">
+            {savingBanner ? "Enregistrement..." : "Ajouter le bandeau"}
+          </button>
+        </form>
+
+        {banners.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-[#2b1620]/[0.06] space-y-2">
+            {banners.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-2 bg-[#fdf1f5] rounded-xl p-3">
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold text-[#2b1620] block truncate">{b.brandName} — {b.title}</span>
+                  <span className="text-[10px] text-[#2b1620]/50">{b.active ? "Actif" : "Masqué"}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={() => toggleBanner(b.id)}
+                    className={`text-[10px] font-semibold px-2 py-1 rounded-full cursor-pointer ${b.active ? "bg-[#d6407a] text-white" : "bg-white text-[#2b1620]/50 border border-[#2b1620]/10"}`}>
+                    {b.active ? "Actif" : "Masqué"}
+                  </button>
+                  <button onClick={() => deleteBanner(b.id)} className="text-rose-500 cursor-pointer p-1">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Création de compte */}
