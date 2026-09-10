@@ -455,6 +455,12 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
   }
 
   if (!matchedPhone) {
+    // Journal de diagnostic temporaire — ne révèle jamais le mot de passe, seulement les
+    // numéros comparés et si un compte existe sous une forme proche (aide à repérer une
+    // variante de stockage inattendue sans avoir à deviner à distance).
+    const allPhones = Array.from(userAccounts.keys());
+    const closeMatches = allPhones.filter((p) => p.replace(/\D/g, "").endsWith(phoneNumber.replace(/\D/g, "").slice(-8)));
+    console.warn(`[Login] Échec pour fullPhone="${fullPhone}" localOnly="${localOnly}". Comptes existants proches: ${JSON.stringify(closeMatches)}. Total comptes: ${allPhones.length}.`);
     const a = loginAttempts.get(fullPhone) || { count: 0, firstAttempt: Date.now() };
     a.count++;
     loginAttempts.set(fullPhone, a);
