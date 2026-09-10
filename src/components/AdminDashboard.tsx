@@ -234,7 +234,7 @@ export default function AdminDashboard({ token }: { token: string }) {
       });
       const data = await res.json();
       if (data.success) {
-        setCreatedInfo({ phone, password: generatedPwd });
+        setCreatedInfo({ phone: data.normalizedPhone || phone, password: generatedPwd });
         setPhone(""); setPassword("");
         load();
       } else {

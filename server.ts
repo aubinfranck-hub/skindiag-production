@@ -21,6 +21,15 @@ const pool = process.env.DATABASE_URL
 const userAccounts = new Map<string, { passwordHash: string; salt: string; createdAt: number; isAdmin: boolean }>();
 const sessions = new Map<string, { phone: string; createdAt: number }>();
 
+// Normalise un numéro de téléphone pour qu'il soit TOUJOURS identique, qu'il soit saisi
+// avec espaces, tirets, ou copié-collé depuis un endroit différent (formulaire admin vs
+// écran de connexion). Sans ça, un compte créé avec espaces ne correspond plus au numéro
+// tapé à la connexion (qui, lui, retire les espaces) — c'est la cause du bug "compte créé
+// mais impossible de se connecter".
+function normalizePhone(raw: string): string {
+  return String(raw || "").replace(/[\s\-().]/g, "").trim();
+}
+
 function hashPassword(password: string, salt: string): string {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
 }
@@ -391,7 +400,7 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
   if (!phoneNumber || !password) {
     return res.status(400).json({ success: false, message: "Numéro et mot de passe requis." });
   }
-  const fullPhone = `${countryCode || "+225"}${String(phoneNumber).replace(/\s+/g, "")}`;
+  const fullPhone = normalizePhone(`${countryCode || "+225"}${phoneNumber}`);
 
   const attempts = loginAttempts.get(fullPhone);
   if (attempts && attempts.count >= 8 && Date.now() - attempts.firstAttempt < 15 * 60 * 1000) {
@@ -426,24 +435,26 @@ app.get("/api/admin/accounts", requireAdminAuth, (req, res) => {
 });
 
 app.post("/api/admin/create-account", requireAdminAuth, (req, res) => {
-  const { phone, password, isAdmin, plan } = req.body;
+  const { password, isAdmin, plan } = req.body;
+  const phone = normalizePhone(req.body.phone);
   if (!phone || !password) {
     return res.status(400).json({ success: false, message: "Numéro et mot de passe requis." });
   }
   createAccount(phone, password, isAdmin === true);
   if (plan) setUserPlan(phone, plan);
-  res.json({ success: true });
+  res.json({ success: true, normalizedPhone: phone });
 });
 
 app.post("/api/admin/set-plan", requireAdminAuth, (req, res) => {
-  const { phone, plan } = req.body;
+  const plan = req.body.plan;
+  const phone = normalizePhone(req.body.phone);
   if (!phone || !plan) return res.status(400).json({ success: false, message: "Numéro et forfait requis." });
   setUserPlan(phone, plan);
   res.json({ success: true });
 });
 
 app.post("/api/admin/accounts/:phone/reset-password", requireAdminAuth, (req, res) => {
-  const phone = decodeURIComponent(req.params.phone);
+  const phone = normalizePhone(decodeURIComponent(req.params.phone));
   if (!userAccounts.has(phone)) return res.status(404).json({ success: false, message: "Compte introuvable." });
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let newPassword = "";
