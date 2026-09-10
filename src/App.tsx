@@ -99,11 +99,16 @@ export default function App() {
     setPendingImage({ data: base64, mime: mimeType });
     setQualityIssue(null);
     setIsCheckingQuality(true);
+    // Le service peut être en veille (redémarrage à froid) et prendre du temps à répondre —
+    // on limite l'attente à 25s puis on continue sans bloquer l'utilisateur indéfiniment.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
     try {
       const res = await fetch("/api/skindiag/check-quality", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
         body: JSON.stringify({ image: base64, mimeType }),
+        signal: controller.signal,
       });
       if (res.status === 401) { handleLogout(); return; }
       const data = await res.json();
@@ -114,9 +119,11 @@ export default function App() {
       // A_excellente ou B_exploitable_imparfaite (ou vérification indisponible) : on continue
       setStep("questionnaire");
     } catch {
-      // En cas d'erreur réseau sur la vérification seule, on ne bloque pas l'utilisateur
+      // Erreur réseau OU délai dépassé (ex: service en train de redémarrer) : on ne bloque
+      // pas l'utilisateur, la vérification complète se refera de toute façon à l'analyse finale.
       setStep("questionnaire");
     } finally {
+      clearTimeout(timeoutId);
       setIsCheckingQuality(false);
     }
   };
