@@ -248,6 +248,7 @@ async function initDatabase(): Promise<void> {
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS is_new BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS rating_avg NUMERIC(2,1) NOT NULL DEFAULT 4.3;
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 6;
+    ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT '';
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -803,7 +804,7 @@ app.get("/api/skindiag/products", async (req, res) => {
 
 app.post("/api/admin/products", requireAdminAuth, async (req, res) => {
   if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
-  const { name, brand, category, price_fcfa, actifs, inci_composition, is_sponsored, is_partner, fragrance_free, suitable_for, image_url } = req.body;
+  const { name, brand, category, price_fcfa, actifs, inci_composition, is_sponsored, is_partner, fragrance_free, suitable_for, image_url, video_url } = req.body;
   if (!name || !brand || !category || !price_fcfa) {
     return res.status(400).json({ success: false, message: "Nom, marque, catégorie et prix requis." });
   }
@@ -817,10 +818,10 @@ app.post("/api/admin/products", requireAdminAuth, async (req, res) => {
   const finalImageUrl = image_url || categoryPhotos[category] || "";
   try {
     await pool.query(
-      `INSERT INTO beauty_products (name, brand, category, price_fcfa, suitable_for, availability_abidjan, actifs, inci_composition, is_sponsored, is_partner, fragrance_free, image_url)
-       VALUES ($1,$2,$3,$4,$5,true,$6,$7,$8,$9,$10,$11)
-       ON CONFLICT (name) DO UPDATE SET brand=$2, category=$3, price_fcfa=$4, suitable_for=$5, actifs=$6, inci_composition=$7, is_sponsored=$8, is_partner=$9, fragrance_free=$10, image_url=$11`,
-      [name, brand, category, price_fcfa, suitable_for || ["all"], actifs || [], inci_composition || "", is_sponsored === true, is_partner === true, fragrance_free === true, finalImageUrl]
+      `INSERT INTO beauty_products (name, brand, category, price_fcfa, suitable_for, availability_abidjan, actifs, inci_composition, is_sponsored, is_partner, fragrance_free, image_url, video_url)
+       VALUES ($1,$2,$3,$4,$5,true,$6,$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (name) DO UPDATE SET brand=$2, category=$3, price_fcfa=$4, suitable_for=$5, actifs=$6, inci_composition=$7, is_sponsored=$8, is_partner=$9, fragrance_free=$10, image_url=$11, video_url=$12`,
+      [name, brand, category, price_fcfa, suitable_for || ["all"], actifs || [], inci_composition || "", is_sponsored === true, is_partner === true, fragrance_free === true, finalImageUrl, video_url || ""]
     );
     res.json({ success: true });
   } catch (err: any) {

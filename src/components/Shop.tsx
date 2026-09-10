@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { ShoppingBag, Star, Search, Truck, MessageCircle, Wallet } from "lucide-react";
+import { ShoppingBag, Star, Search, Truck, MessageCircle, Wallet, Play } from "lucide-react";
 import { Product, ACTIF_LABELS } from "../types";
 import OrderModal from "./OrderModal";
+import ProductDetail from "./ProductDetail";
 
 const CATEGORY_LABELS: Record<string, string> = {
   cleanser: "Nettoyants",
@@ -23,13 +24,20 @@ function StarRating({ avg, count }: { avg: number; count: number }) {
   );
 }
 
-function ProductTile({ product, onOrder }: { product: Product; onOrder: () => void }) {
+function ProductTile({ product, onOrder, onOpenDetail }: { product: Product; onOrder: () => void; onOpenDetail: () => void }) {
   const hasPromo = product.original_price_fcfa && product.original_price_fcfa > product.price_fcfa;
   return (
     <div className={`rounded-2xl p-3.5 ${product.is_sponsored ? "bg-white border-2 border-[#d6407a]/30" : "premium-card"}`}>
       <div className="flex items-start gap-3">
         {product.image_url && (
-          <img src={product.image_url} alt={product.name} className="w-16 h-16 rounded-xl object-cover shrink-0 bg-white" />
+          <button onClick={onOpenDetail} className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 cursor-pointer">
+            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+            {product.video_url && (
+              <span className="absolute inset-0 bg-black/25 flex items-center justify-center">
+                <Play className="w-4 h-4 text-white fill-white" />
+              </span>
+            )}
+          </button>
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
@@ -76,6 +84,7 @@ export default function Shop({ token }: { token: string }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [orderingProduct, setOrderingProduct] = useState<Product | null>(null);
+  const [viewingDetail, setViewingDetail] = useState<Product | null>(null);
 
   useEffect(() => {
     fetch("/api/skindiag/products")
@@ -127,7 +136,7 @@ export default function Shop({ token }: { token: string }) {
               <h3 className="text-sm font-semibold text-[#2b1620] mb-2.5">Nouveautés 🆕</h3>
               <div className="space-y-2.5">
                 {nouveautes.map((p) => (
-                  <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} />
+                  <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} onOpenDetail={() => setViewingDetail(p)} />
                 ))}
               </div>
             </div>
@@ -138,7 +147,7 @@ export default function Shop({ token }: { token: string }) {
               <h3 className="text-sm font-semibold text-[#2b1620] mb-2.5">Promos ⭐</h3>
               <div className="space-y-2.5">
                 {promos.map((p) => (
-                  <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} />
+                  <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} onOpenDetail={() => setViewingDetail(p)} />
                 ))}
               </div>
             </div>
@@ -174,7 +183,7 @@ export default function Shop({ token }: { token: string }) {
           ) : (
             <div className="space-y-2.5">
               {sorted.map((p) => (
-                <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} />
+                <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} onOpenDetail={() => setViewingDetail(p)} />
               ))}
             </div>
           )}
@@ -183,6 +192,14 @@ export default function Shop({ token }: { token: string }) {
 
       {orderingProduct && (
         <OrderModal product={orderingProduct} token={token} onClose={() => setOrderingProduct(null)} />
+      )}
+
+      {viewingDetail && (
+        <ProductDetail
+          product={viewingDetail}
+          onClose={() => setViewingDetail(null)}
+          onOrder={() => { setOrderingProduct(viewingDetail); setViewingDetail(null); }}
+        />
       )}
     </div>
   );

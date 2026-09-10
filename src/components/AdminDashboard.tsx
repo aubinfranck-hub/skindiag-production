@@ -79,6 +79,7 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [prodPrice, setProdPrice] = useState("");
   const [prodActifs, setProdActifs] = useState<string[]>([]);
   const [prodInci, setProdInci] = useState("");
+  const [prodVideoUrl, setProdVideoUrl] = useState("");
   const [prodSponsored, setProdSponsored] = useState(false);
   const [prodPartner, setProdPartner] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -137,12 +138,13 @@ export default function AdminDashboard({ token }: { token: string }) {
         body: JSON.stringify({
           name: prodName, brand: prodBrand, category: prodCategory,
           price_fcfa: Number(prodPrice), actifs: prodActifs, inci_composition: prodInci,
+          video_url: prodVideoUrl,
           is_sponsored: prodSponsored, is_partner: prodPartner,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setProdName(""); setProdBrand(""); setProdPrice(""); setProdActifs([]); setProdInci("");
+        setProdName(""); setProdBrand(""); setProdPrice(""); setProdActifs([]); setProdInci(""); setProdVideoUrl("");
         setProdSponsored(false); setProdPartner(false);
         load();
       } else {
@@ -305,6 +307,8 @@ export default function AdminDashboard({ token }: { token: string }) {
           </select>
           <textarea placeholder="Composition INCI complète" value={prodInci} onChange={(e) => setProdInci(e.target.value)} rows={2}
             className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a] resize-none" />
+          <input placeholder="URL vidéo de présentation (optionnel, mp4)" value={prodVideoUrl} onChange={(e) => setProdVideoUrl(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
 
           <div className="sm:col-span-2">
             <p className="text-[10px] text-[#2b1620]/50 font-medium mb-1.5">Actifs contenus (utilisés pour le matching)</p>
