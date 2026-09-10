@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronRight, HelpCircle } from "lucide-react";
 import { ZONE_CATEGORIES } from "../types";
 import PromoBanners from "./PromoBanners";
+import { PromoHeader, PromoFooter } from "./PromoHeaderFooter";
 
 interface CategorySelectorProps {
   onSelectCategory: (categoryId: string) => void;
@@ -28,6 +29,7 @@ export default function CategorySelector({ onSelectCategory, onSelectAutre }: Ca
 
   return (
     <div className="animate-fade-in">
+      {promoEnabled && <PromoHeader />}
       {promoEnabled && <PromoBanners banners={promoBanners} slot="hero" />}
 
       <h2 className="text-xl sm:text-2xl font-display font-semibold text-[#2b1620] mb-1">Quelle zone souhaitez-vous analyser ?</h2>
@@ -61,6 +63,7 @@ export default function CategorySelector({ onSelectCategory, onSelectAutre }: Ca
       </button>
 
       {promoEnabled && <PromoBanners banners={promoBanners} slot="secondary" />}
+      {promoEnabled && <PromoFooter partnerName={promoBanners.find((b: any) => b.position === "hero")?.brandName} />}
     </div>
   );
 }
