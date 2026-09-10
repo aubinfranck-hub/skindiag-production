@@ -492,6 +492,26 @@ app.post("/api/admin/accounts/:phone/toggle-admin", requireAdminAuth, (req, res)
   res.json({ success: true, isAdmin: acc.isAdmin });
 });
 
+app.delete("/api/admin/accounts/:phone", requireAdminAuth, async (req, res) => {
+  const phone = decodeURIComponent(req.params.phone);
+  if (!userAccounts.has(phone)) return res.status(404).json({ success: false, message: "Compte introuvable." });
+  userAccounts.delete(phone);
+  userPlans.delete(phone);
+  for (const [token, s] of sessions) {
+    if (s.phone === phone) sessions.delete(token);
+  }
+  if (pool) {
+    try {
+      await pool.query("DELETE FROM accounts WHERE phone = $1", [phone]);
+      await pool.query("DELETE FROM plans WHERE phone = $1", [phone]);
+      await pool.query("DELETE FROM sessions WHERE phone = $1", [phone]);
+    } catch (err: any) {
+      console.error("[DB] Échec suppression compte:", err.message);
+    }
+  }
+  res.json({ success: true });
+});
+
 app.get("/api/admin/pending-activations", requireAdminAuth, (req, res) => {
   res.json({ success: true, pending: Array.from(pendingActivations.values()) });
 });

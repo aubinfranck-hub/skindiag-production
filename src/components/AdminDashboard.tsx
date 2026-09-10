@@ -67,6 +67,7 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [loading, setLoading] = useState(false);
 
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+225");
   const [password, setPassword] = useState("");
   const [plan, setPlan] = useState("free_trial");
   const [creating, setCreating] = useState(false);
@@ -197,6 +198,19 @@ export default function AdminDashboard({ token }: { token: string }) {
     }
   };
 
+  const deleteAccount = async (phone: string) => {
+    if (!confirm(`Supprimer définitivement le compte ${phone} ?`)) return;
+    try {
+      await fetch(`/api/admin/accounts/${encodeURIComponent(phone)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      load();
+    } catch {
+      // silencieux
+    }
+  };
+
   const updateOrderStatus = async (orderId: number, status: string) => {
     try {
       await fetch(`/api/admin/orders/${orderId}/status`, {
@@ -226,15 +240,16 @@ export default function AdminDashboard({ token }: { token: string }) {
     setCreating(true);
     setError(null);
     const generatedPwd = password || generatePassword();
+    const fullPhone = `${countryCode}${phone.replace(/\s+/g, "")}`;
     try {
       const res = await fetch("/api/admin/create-account", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ phone, password: generatedPwd, plan }),
+        body: JSON.stringify({ phone: fullPhone, password: generatedPwd, plan }),
       });
       const data = await res.json();
       if (data.success) {
-        setCreatedInfo({ phone: data.normalizedPhone || phone, password: generatedPwd });
+        setCreatedInfo({ phone: data.normalizedPhone || fullPhone, password: generatedPwd });
         setPhone(""); setPassword("");
         load();
       } else {
@@ -293,11 +308,21 @@ export default function AdminDashboard({ token }: { token: string }) {
           <UserPlus className="w-3.5 h-3.5" /> Créer un compte
         </h3>
         <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <input
-            type="tel" required placeholder="+225 07 12 34 56"
-            value={phone} onChange={(e) => setPhone(e.target.value)}
-            className="bg-white border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] placeholder-[#2b1620]/30 focus:outline-none focus:border-[#d6407a] font-mono"
-          />
+          <div className="flex gap-1.5">
+            <select
+              value={countryCode} onChange={(e) => setCountryCode(e.target.value)}
+              className="bg-white border border-[#2b1620]/10 rounded-xl px-2 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]"
+            >
+              <option value="+225">+225</option>
+              <option value="+221">+221</option>
+              <option value="+223">+223</option>
+            </select>
+            <input
+              type="tel" required placeholder="07 12 34 56"
+              value={phone} onChange={(e) => setPhone(e.target.value)}
+              className="flex-1 min-w-0 bg-white border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] placeholder-[#2b1620]/30 focus:outline-none focus:border-[#d6407a] font-mono"
+            />
+          </div>
           <select
             value={plan} onChange={(e) => setPlan(e.target.value)}
             className="bg-white border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]"
@@ -506,6 +531,12 @@ export default function AdminDashboard({ token }: { token: string }) {
                   className="text-[10px] font-medium bg-white border border-[#2b1620]/10 text-[#2b1620]/70 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[#2b1620]/[0.04]"
                 >
                   {a.isAdmin ? "Retirer admin" : "Rendre admin"}
+                </button>
+                <button
+                  onClick={() => deleteAccount(a.phone)}
+                  className="text-[10px] font-medium bg-rose-50 border border-rose-200 text-rose-600 px-2.5 py-1 rounded-full cursor-pointer hover:bg-rose-100"
+                >
+                  Supprimer
                 </button>
               </div>
               {resetInfo?.phone === a.phone && (
