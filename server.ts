@@ -140,7 +140,7 @@ const pendingActivations = new Map<string, { phone: string; plan: string; amount
 interface PromoBanner {
   id: number; brandName: string; title: string; subtitle: string; ctaText: string;
   linkUrl: string; imageUrl: string; colorFrom: string; colorTo: string; textColor: string;
-  sortOrder: number; active: boolean;
+  sortOrder: number; active: boolean; position: "hero" | "secondary"; tags: string; badgeText: string;
 }
 let promoBanners: PromoBanner[] = [];
 let promoThemeEnabled = false;
@@ -274,6 +274,9 @@ async function initDatabase(): Promise<void> {
       text_color TEXT NOT NULL DEFAULT '#ffffff',
       sort_order INTEGER NOT NULL DEFAULT 0,
       active BOOLEAN NOT NULL DEFAULT true,
+      position TEXT NOT NULL DEFAULT 'hero',
+      tags TEXT NOT NULL DEFAULT '',
+      badge_text TEXT NOT NULL DEFAULT '',
       created_at BIGINT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS app_settings (
@@ -296,6 +299,9 @@ async function initDatabase(): Promise<void> {
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS rating_avg NUMERIC(2,1) NOT NULL DEFAULT 4.3;
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 6;
     ALTER TABLE beauty_products ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT '';
+    ALTER TABLE promo_banners ADD COLUMN IF NOT EXISTS position TEXT NOT NULL DEFAULT 'hero';
+    ALTER TABLE promo_banners ADD COLUMN IF NOT EXISTS tags TEXT NOT NULL DEFAULT '';
+    ALTER TABLE promo_banners ADD COLUMN IF NOT EXISTS badge_text TEXT NOT NULL DEFAULT '';
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -437,6 +443,7 @@ async function initDatabase(): Promise<void> {
     id: r.id, brandName: r.brand_name, title: r.title, subtitle: r.subtitle, ctaText: r.cta_text,
     linkUrl: r.link_url, imageUrl: r.image_url, colorFrom: r.color_from, colorTo: r.color_to,
     textColor: r.text_color, sortOrder: r.sort_order, active: r.active,
+    position: r.position === "secondary" ? "secondary" : "hero", tags: r.tags, badgeText: r.badge_text,
   }));
   const themeSetting = await pool.query("SELECT value FROM app_settings WHERE key = 'promo_theme_enabled'");
   promoThemeEnabled = themeSetting.rows[0]?.value === "true";
@@ -966,20 +973,23 @@ app.get("/api/admin/promo-banners", requireAdminAuth, (req, res) => {
 });
 
 app.post("/api/admin/promo-banners", requireAdminAuth, async (req, res) => {
-  const { brandName, title, subtitle, ctaText, linkUrl, imageUrl, colorFrom, colorTo, textColor } = req.body;
+  const { brandName, title, subtitle, ctaText, linkUrl, imageUrl, colorFrom, colorTo, textColor, position, tags, badgeText } = req.body;
   if (!brandName || !title) return res.status(400).json({ success: false, message: "Marque et titre requis." });
   if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
+  const finalPosition = position === "secondary" ? "secondary" : "hero";
   try {
     const { rows } = await pool.query(
-      `INSERT INTO promo_banners (brand_name, title, subtitle, cta_text, link_url, image_url, color_from, color_to, text_color, sort_order, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      `INSERT INTO promo_banners (brand_name, title, subtitle, cta_text, link_url, image_url, color_from, color_to, text_color, sort_order, position, tags, badge_text, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
       [brandName, title, subtitle || "", ctaText || "Découvrir la gamme", linkUrl || "", imageUrl || "",
-       colorFrom || "#d6407a", colorTo || "#8a2a54", textColor || "#ffffff", promoBanners.length, Date.now()]
+       colorFrom || "#d6407a", colorTo || "#8a2a54", textColor || "#ffffff", promoBanners.length,
+       finalPosition, tags || "", badgeText || "", Date.now()]
     );
     promoBanners.push({
       id: rows[0].id, brandName, title, subtitle: subtitle || "", ctaText: ctaText || "Découvrir la gamme",
       linkUrl: linkUrl || "", imageUrl: imageUrl || "", colorFrom: colorFrom || "#d6407a",
-      colorTo: colorTo || "#8a2a54", textColor: textColor || "#ffffff", sortOrder: promoBanners.length, active: true,
+      colorTo: colorTo || "#8a2a54", textColor: textColor || "#ffffff", sortOrder: promoBanners.length,
+      active: true, position: finalPosition, tags: tags || "", badgeText: badgeText || "",
     });
     res.json({ success: true });
   } catch (err: any) {

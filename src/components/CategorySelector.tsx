@@ -28,7 +28,7 @@ export default function CategorySelector({ onSelectCategory, onSelectAutre }: Ca
 
   return (
     <div className="animate-fade-in">
-      {promoEnabled && <PromoBanners banners={promoBanners} />}
+      {promoEnabled && <PromoBanners banners={promoBanners} slot="hero" />}
 
       <h2 className="text-xl sm:text-2xl font-display font-semibold text-[#2b1620] mb-1">Quelle zone souhaitez-vous analyser ?</h2>
       <p className="text-xs sm:text-sm text-[#2b1620]/60 mb-4">Choisissez une catégorie pour commencer.</p>
@@ -59,6 +59,8 @@ export default function CategorySelector({ onSelectCategory, onSelectAutre }: Ca
         <HelpCircle className="w-4 h-4" />
         Je ne sais pas / Autre zone
       </button>
+
+      {promoEnabled && <PromoBanners banners={promoBanners} slot="secondary" />}
     </div>
   );
 }

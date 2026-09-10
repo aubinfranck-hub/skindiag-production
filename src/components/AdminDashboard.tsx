@@ -234,6 +234,9 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [bannerImage, setBannerImage] = useState("");
   const [bannerColorFrom, setBannerColorFrom] = useState("#d6407a");
   const [bannerColorTo, setBannerColorTo] = useState("#8a2a54");
+  const [bannerPosition, setBannerPosition] = useState<"hero" | "secondary">("hero");
+  const [bannerTags, setBannerTags] = useState("");
+  const [bannerBadge, setBannerBadge] = useState("");
   const [savingBanner, setSavingBanner] = useState(false);
 
   const loadPromoTheme = useCallback(async () => {
@@ -276,11 +279,13 @@ export default function AdminDashboard({ token }: { token: string }) {
           brandName: bannerBrand, title: bannerTitle, subtitle: bannerSubtitle,
           ctaText: bannerCta, linkUrl: bannerLink, imageUrl: bannerImage,
           colorFrom: bannerColorFrom, colorTo: bannerColorTo,
+          position: bannerPosition, tags: bannerTags, badgeText: bannerBadge,
         }),
       });
       const data = await res.json();
       if (data.success) {
         setBannerBrand(""); setBannerTitle(""); setBannerSubtitle(""); setBannerLink(""); setBannerImage("");
+        setBannerTags(""); setBannerBadge("");
         loadPromoTheme();
       }
     } catch {
@@ -396,11 +401,25 @@ export default function AdminDashboard({ token }: { token: string }) {
         </p>
 
         <form onSubmit={handleCreateBanner} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-3 border-t border-[#2b1620]/[0.06]">
+          <div className="sm:col-span-2 flex gap-1.5">
+            <button type="button" onClick={() => setBannerPosition("hero")}
+              className={`flex-1 text-xs font-semibold py-2 rounded-lg cursor-pointer ${bannerPosition === "hero" ? "bg-[#d6407a] text-white" : "bg-[#fdf1f5] text-[#2b1620]/60"}`}>
+              Carrousel (haut de page)
+            </button>
+            <button type="button" onClick={() => setBannerPosition("secondary")}
+              className={`flex-1 text-xs font-semibold py-2 rounded-lg cursor-pointer ${bannerPosition === "secondary" ? "bg-[#d6407a] text-white" : "bg-[#fdf1f5] text-[#2b1620]/60"}`}>
+              Bandeau simple (bas de page)
+            </button>
+          </div>
           <input placeholder="Nom de la marque" required value={bannerBrand} onChange={(e) => setBannerBrand(e.target.value)}
             className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
           <input placeholder="Titre (ex: Une peau plus belle)" required value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)}
             className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
           <input placeholder="Sous-titre (optionnel)" value={bannerSubtitle} onChange={(e) => setBannerSubtitle(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input placeholder="Badge (ex: Partenaire officiel — carrousel uniquement)" value={bannerBadge} onChange={(e) => setBannerBadge(e.target.value)}
+            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <input placeholder="Mots-clés séparés par virgule (ex: Éclat, Unification — bandeau simple uniquement)" value={bannerTags} onChange={(e) => setBannerTags(e.target.value)}
             className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
           <input placeholder="Texte du bouton" value={bannerCta} onChange={(e) => setBannerCta(e.target.value)}
             className="bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
