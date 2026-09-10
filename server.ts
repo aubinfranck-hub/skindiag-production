@@ -261,20 +261,34 @@ async function initDatabase(): Promise<void> {
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
+  let migratedPhones = 0;
   for (const row of accountsRes.rows) {
-    userAccounts.set(row.phone, {
+    const cleanPhone = normalizePhone(row.phone);
+    userAccounts.set(cleanPhone, {
       passwordHash: row.password_hash,
       salt: row.salt,
       createdAt: Number(row.created_at),
       isAdmin: row.is_admin,
     });
+    // Migration : un compte créé avant le correctif de normalisation avait un numéro avec
+    // espaces stocké tel quel — on le corrige en base pour que la connexion fonctionne.
+    if (cleanPhone !== row.phone) {
+      await pool.query("DELETE FROM accounts WHERE phone = $1", [row.phone]);
+      await pool.query(
+        "INSERT INTO accounts (phone, password_hash, salt, created_at, is_admin) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (phone) DO NOTHING",
+        [cleanPhone, row.password_hash, row.salt, row.created_at, row.is_admin]
+      );
+      await pool.query("UPDATE plans SET phone = $1 WHERE phone = $2", [cleanPhone, row.phone]);
+      migratedPhones++;
+    }
   }
+  if (migratedPhones > 0) console.log(`[DB] ${migratedPhones} numéro(s) de téléphone corrigés (espaces retirés).`);
   const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
   const sessionsRes = await pool.query("SELECT * FROM sessions");
   let loadedSessions = 0;
   for (const row of sessionsRes.rows) {
     if (Date.now() - Number(row.created_at) <= SESSION_MAX_AGE_MS) {
-      sessions.set(row.token, { phone: row.phone, createdAt: Number(row.created_at) });
+      sessions.set(row.token, { phone: normalizePhone(row.phone), createdAt: Number(row.created_at) });
       loadedSessions++;
     }
   }
@@ -282,7 +296,7 @@ async function initDatabase(): Promise<void> {
 
   const plansRes = await pool.query("SELECT * FROM plans");
   for (const row of plansRes.rows) {
-    userPlans.set(row.phone, { plan: row.plan, activatedAt: Number(row.activated_at) });
+    userPlans.set(normalizePhone(row.phone), { plan: row.plan, activatedAt: Number(row.activated_at) });
   }
 
   // Compte admin "graine" créé une seule fois depuis les variables d'environnement
