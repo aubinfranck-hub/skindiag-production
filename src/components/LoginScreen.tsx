@@ -44,13 +44,12 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
       <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-6">
-          {/* Vrai logo SkinDiag (avec wordmark intégré) */}
+          {/* Nouveau logo SkinDiag en bandeau large (portrait + wordmark) */}
           <img
-            src="/icon-512.png"
+            src="/logo-wide.png"
             alt="SkinDiag — Analyse de la peau noire africaine"
-            className="w-40 h-40 mx-auto mb-2 drop-shadow-[0_10px_25px_rgba(214,64,122,0.25)]"
+            className="w-full max-w-[340px] mx-auto mb-2 drop-shadow-[0_10px_25px_rgba(214,64,122,0.2)]"
           />
-          <p className="text-sm text-[#2b1620]/55">Votre peau, comprise et accompagnée</p>
         </div>
 
         <div className="premium-card rounded-[28px] p-7">
