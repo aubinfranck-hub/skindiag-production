@@ -442,6 +442,31 @@ app.post("/api/admin/set-plan", requireAdminAuth, (req, res) => {
   res.json({ success: true });
 });
 
+app.post("/api/admin/accounts/:phone/reset-password", requireAdminAuth, (req, res) => {
+  const phone = decodeURIComponent(req.params.phone);
+  if (!userAccounts.has(phone)) return res.status(404).json({ success: false, message: "Compte introuvable." });
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let newPassword = "";
+  for (let i = 0; i < 8; i++) newPassword += chars[Math.floor(Math.random() * chars.length)];
+  const acc = userAccounts.get(phone)!;
+  createAccount(phone, newPassword, acc.isAdmin);
+  // Le mot de passe change : toutes les sessions existantes sur ce compte sont invalidées
+  for (const [token, s] of sessions) {
+    if (s.phone === phone) sessions.delete(token);
+  }
+  res.json({ success: true, newPassword });
+});
+
+app.post("/api/admin/accounts/:phone/toggle-admin", requireAdminAuth, (req, res) => {
+  const phone = decodeURIComponent(req.params.phone);
+  const acc = userAccounts.get(phone);
+  if (!acc) return res.status(404).json({ success: false, message: "Compte introuvable." });
+  acc.isAdmin = !acc.isAdmin;
+  userAccounts.set(phone, acc);
+  persistAccount(phone).catch(() => {});
+  res.json({ success: true, isAdmin: acc.isAdmin });
+});
+
 app.get("/api/admin/pending-activations", requireAdminAuth, (req, res) => {
   res.json({ success: true, pending: Array.from(pendingActivations.values()) });
 });

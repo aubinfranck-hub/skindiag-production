@@ -157,6 +157,46 @@ export default function AdminDashboard({ token }: { token: string }) {
     }
   };
 
+  const [resetInfo, setResetInfo] = useState<{ phone: string; password: string } | null>(null);
+
+  const changeAccountPlan = async (phone: string, plan: string) => {
+    try {
+      await fetch("/api/admin/set-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ phone, plan }),
+      });
+      load();
+    } catch {
+      // silencieux
+    }
+  };
+
+  const resetPassword = async (phone: string) => {
+    try {
+      const res = await fetch(`/api/admin/accounts/${encodeURIComponent(phone)}/reset-password`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) setResetInfo({ phone, password: data.newPassword });
+    } catch {
+      // silencieux
+    }
+  };
+
+  const toggleAdmin = async (phone: string) => {
+    try {
+      await fetch(`/api/admin/accounts/${encodeURIComponent(phone)}/toggle-admin`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      load();
+    } catch {
+      // silencieux
+    }
+  };
+
   const updateOrderStatus = async (orderId: number, status: string) => {
     try {
       await fetch(`/api/admin/orders/${orderId}/status`, {
@@ -409,14 +449,49 @@ export default function AdminDashboard({ token }: { token: string }) {
         <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#2b1620]/50 font-semibold mb-3">
           <Users className="w-3.5 h-3.5" /> Tous les comptes ({accounts.length})
         </h3>
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           {accounts.map((a) => (
-            <div key={a.phone} className="flex items-center justify-between text-xs py-2 border-b border-white/5">
-              <span className="font-mono text-[#2b1620]">{a.phone}</span>
-              <div className="flex items-center gap-2">
+            <div key={a.phone} className="bg-[#fdf1f5] rounded-xl p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono text-xs text-[#2b1620]">{a.phone}</span>
                 {a.isAdmin && <span className="text-[9px] font-bold uppercase bg-[#d6407a]/20 text-[#d6407a] px-1.5 py-0.5 rounded">Admin</span>}
-                <span className="text-[#2b1620]/50">{PLAN_LABELS[a.plan] || a.plan}</span>
               </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <select
+                  value={a.plan}
+                  onChange={(e) => changeAccountPlan(a.phone, e.target.value)}
+                  className="text-[10px] bg-white border border-[#2b1620]/10 rounded-full px-2 py-1 text-[#2b1620] cursor-pointer"
+                >
+                  <option value="free_trial">Essai gratuit</option>
+                  <option value="payg_day">Pass Jour</option>
+                  <option value="monthly">Mensuel</option>
+                  <option value="premium">Premium</option>
+                </select>
+                <button
+                  onClick={() => resetPassword(a.phone)}
+                  className="text-[10px] font-medium bg-white border border-[#2b1620]/10 text-[#2b1620]/70 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[#2b1620]/[0.04]"
+                >
+                  Réinitialiser mot de passe
+                </button>
+                <button
+                  onClick={() => toggleAdmin(a.phone)}
+                  className="text-[10px] font-medium bg-white border border-[#2b1620]/10 text-[#2b1620]/70 px-2.5 py-1 rounded-full cursor-pointer hover:bg-[#2b1620]/[0.04]"
+                >
+                  {a.isAdmin ? "Retirer admin" : "Rendre admin"}
+                </button>
+              </div>
+              {resetInfo?.phone === a.phone && (
+                <div className="mt-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2.5">
+                  <p className="text-[10px] text-emerald-700">Nouveau mot de passe : <strong className="font-mono text-xs">{resetInfo.password}</strong></p>
+                  <a
+                    href={`https://wa.me/${a.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Bonjour ! Votre mot de passe SkinDiag a été réinitialisé.\n\nNuméro : ${a.phone}\nNouveau mot de passe : ${resetInfo.password}\n\nConnectez-vous sur skindiag-production.onrender.com`)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="w-full mt-1.5 flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#1ebe5a] text-white text-[10px] font-semibold py-2 rounded-lg transition cursor-pointer"
+                  >
+                    <MessageCircle className="w-3 h-3" /> Envoyer par WhatsApp
+                  </a>
+                </div>
+              )}
             </div>
           ))}
         </div>
