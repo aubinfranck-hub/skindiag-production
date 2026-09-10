@@ -12,7 +12,16 @@ const PORT = Number(process.env.PORT) || 3000;
 app.set("trust proxy", 1);
 
 const pool = process.env.DATABASE_URL
-  ? new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 5 })
+  ? new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      // Sans ces délais, une base endormie (plan gratuit) peut faire attendre indéfiniment
+      // toute requête — y compris le chargement des comptes au démarrage, ce qui bloquerait
+      // TOUT le serveur (plus aucune route ne répondrait, pas seulement la connexion).
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000,
+    })
   : null;
 
 // --- Authentification : comptes créés par l'admin, connexion numéro + mot de passe ---
@@ -932,8 +941,6 @@ app.post("/api/admin/products/:id/sponsor", requireAdminAuth, async (req, res) =
 });
 
 async function startServer() {
-  await initDatabase();
-
   // process.cwd() plutôt que import.meta.url : le serveur est bundlé en CommonJS
   // (esbuild --format=cjs), où import.meta.url n'est pas disponible.
   const distPath = path.join(process.cwd(), "dist");
@@ -943,9 +950,21 @@ async function startServer() {
     res.sendFile(path.join(distPath, "index.html"));
   });
 
+  // Le serveur écoute IMMÉDIATEMENT, sans attendre la base de données — sur le plan gratuit,
+  // la base peut elle aussi être endormie et mettre du temps à répondre. Si on attendait
+  // initDatabase() avant d'écouter, TOUTE requête (même /api/health) resterait bloquée
+  // indéfiniment pendant ce réveil. Les comptes/produits se chargent en tâche de fond juste
+  // après ; les toutes premières requêtes pendant cette poignée de secondes peuvent échouer
+  // proprement (compte "introuvable"), plutôt que de ne jamais recevoir de réponse du tout.
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`SkinDiag running on port ${PORT}`);
   });
+
+  try {
+    await initDatabase();
+  } catch (err: any) {
+    console.error("[DB] Échec du chargement initial:", err.message);
+  }
 }
 
 startServer();
