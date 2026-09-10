@@ -210,6 +210,10 @@ export default function AdminDashboard({ token }: { token: string }) {
     }
   };
 
+  const totalRevenue = orders
+    .filter((o) => o.status === "delivered")
+    .reduce((sum, o) => sum + o.price_fcfa * o.quantity, 0);
+
   const generatePassword = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let pwd = "";
@@ -258,6 +262,30 @@ export default function AdminDashboard({ token }: { token: string }) {
   return (
     <div className="animate-fade-in space-y-5">
       <h2 className="text-2xl font-display font-semibold text-[#2b1620] mb-1">Administration</h2>
+
+      {/* Vue d'ensemble */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="premium-card rounded-2xl p-3.5 text-center">
+          <Users className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
+          <span className="text-lg font-bold text-[#2b1620] block">{accounts.length}</span>
+          <span className="text-[10px] text-[#2b1620]/50">Comptes</span>
+        </div>
+        <div className="premium-card rounded-2xl p-3.5 text-center">
+          <Truck className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
+          <span className="text-lg font-bold text-[#2b1620] block">{orders.length}</span>
+          <span className="text-[10px] text-[#2b1620]/50">Commandes</span>
+        </div>
+        <div className="premium-card rounded-2xl p-3.5 text-center">
+          <Package className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
+          <span className="text-lg font-bold text-[#2b1620] block">{totalRevenue.toLocaleString("fr-FR")}</span>
+          <span className="text-[10px] text-[#2b1620]/50">FCFA (livrées)</span>
+        </div>
+        <div className="premium-card rounded-2xl p-3.5 text-center">
+          <Star className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
+          <span className="text-lg font-bold text-[#2b1620] block">{pending.length}</span>
+          <span className="text-[10px] text-[#2b1620]/50">Paiements en attente</span>
+        </div>
+      </div>
 
       {/* Création de compte */}
       <div className="premium-card rounded-2xl p-5">
