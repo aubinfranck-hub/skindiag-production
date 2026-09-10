@@ -415,13 +415,37 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
     return res.status(400).json({ success: false, message: "Numéro et mot de passe requis." });
   }
   const fullPhone = normalizePhone(`${countryCode || "+225"}${phoneNumber}`);
+  const localOnly = normalizePhone(phoneNumber); // repli : anciens comptes créés sans indicatif
 
   const attempts = loginAttempts.get(fullPhone);
   if (attempts && attempts.count >= 8 && Date.now() - attempts.firstAttempt < 15 * 60 * 1000) {
     return res.status(429).json({ success: false, message: "Trop de tentatives. Réessayez dans 15 minutes." });
   }
 
-  if (!verifyAccountPassword(fullPhone, password)) {
+  // Le compte peut exister sous le bon format (+indicatif+numéro) OU, pour d'anciens comptes
+  // créés avant le correctif du formulaire admin, sous le numéro local seul sans indicatif.
+  let matchedPhone: string | null = null;
+  if (verifyAccountPassword(fullPhone, password)) {
+    matchedPhone = fullPhone;
+  } else if (localOnly !== fullPhone && verifyAccountPassword(localOnly, password)) {
+    matchedPhone = localOnly;
+    // Migration automatique et silencieuse vers le format correct, pour que ça ne se
+    // reproduise plus et que la fiche compte soit propre pour l'admin désormais.
+    const acc = userAccounts.get(localOnly)!;
+    userAccounts.delete(localOnly);
+    userAccounts.set(fullPhone, acc);
+    persistAccount(fullPhone).catch(() => {});
+    pool?.query("DELETE FROM accounts WHERE phone = $1", [localOnly]).catch(() => {});
+    const oldPlan = userPlans.get(localOnly);
+    if (oldPlan) {
+      userPlans.delete(localOnly);
+      userPlans.set(fullPhone, oldPlan);
+      persistPlan(fullPhone).catch(() => {});
+      pool?.query("DELETE FROM plans WHERE phone = $1", [localOnly]).catch(() => {});
+    }
+  }
+
+  if (!matchedPhone) {
     const a = loginAttempts.get(fullPhone) || { count: 0, firstAttempt: Date.now() };
     a.count++;
     loginAttempts.set(fullPhone, a);
@@ -430,14 +454,14 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
   loginAttempts.delete(fullPhone);
 
   // Session unique : une nouvelle connexion déconnecte les précédentes (sauf comptes admin)
-  const isAdminAccount = userAccounts.get(fullPhone)?.isAdmin === true;
+  const isAdminAccount = userAccounts.get(matchedPhone)?.isAdmin === true;
   if (!isAdminAccount) {
     for (const [oldToken, s] of sessions) {
-      if (s.phone === fullPhone) sessions.delete(oldToken);
+      if (s.phone === matchedPhone) sessions.delete(oldToken);
     }
   }
 
-  const token = createSession(fullPhone);
+  const token = createSession(matchedPhone);
   res.json({ success: true, sessionToken: token, isAdmin: isAdminAccount });
 });
 
