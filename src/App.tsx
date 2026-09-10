@@ -34,6 +34,7 @@ export default function App() {
   const [captureMode, setCaptureMode] = useState<"photo" | "video">("photo");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<SkinAnalysisResult | null>(null);
+  const [viewingHistoryItem, setViewingHistoryItem] = useState<SkinAnalysisResult | null>(null);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
   const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
   const [history, setHistory] = useState<SkinAnalysisResult[]>(() => {
@@ -204,7 +205,7 @@ export default function App() {
           {tabs.map((t) => (
             <button
               key={t.id}
-              onClick={() => setActiveTab(t.id)}
+              onClick={() => { setActiveTab(t.id); setViewingHistoryItem(null); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition cursor-pointer ${
                 activeTab === t.id ? "bg-[#d6407a]/15 text-[#d6407a]" : "text-[#2b1620]/60 hover:bg-[#2b1620]/[0.03]"
               }`}
@@ -254,25 +255,38 @@ export default function App() {
           </>
         )}
 
-        {activeTab === "historique" && (
+        {activeTab === "historique" && !viewingHistoryItem && (
           <div className="animate-fade-in">
             <h2 className="text-2xl font-display font-semibold mb-6">Historique</h2>
             {history.length === 0 ? (
               <p className="text-sm text-[#2b1620]/50">Aucune analyse pour l'instant.</p>
             ) : (
               <div className="space-y-3">
-                {history.map((h, i) => (
-                  <div key={i} className="premium-card rounded-2xl p-4 flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium">{h.zoneAnalysee}</span>
-                      <p className="text-xs text-[#2b1620]/50">{h.typeDePeau}</p>
+                {history.map((h: any, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setViewingHistoryItem(h)}
+                    className="w-full premium-card rounded-2xl p-4 flex items-center justify-between text-left hover:-translate-y-0.5 transition cursor-pointer"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium block">{h.zoneAnalysee}</span>
+                      <p className="text-xs text-[#2b1620]/50 truncate">{h.typeDePeau} · {h.observation ? h.observation.slice(0, 50) + (h.observation.length > 50 ? "…" : "") : ""}</p>
+                      {h.createdAt && (
+                        <p className="text-[10px] text-[#2b1620]/35 mt-1">
+                          {new Date(h.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      )}
                     </div>
-                    <span className="text-lg font-bold text-[#d6407a]">{h.scoreGlobal}</span>
-                  </div>
+                    <span className="text-lg font-bold text-[#d6407a] shrink-0 ml-3">{h.scoreGlobal}</span>
+                  </button>
                 ))}
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === "historique" && viewingHistoryItem && sessionToken && (
+          <ResultsView result={viewingHistoryItem} token={sessionToken} onRestart={() => setViewingHistoryItem(null)} restartLabel="Retour à l'historique" />
         )}
 
         {activeTab === "boutique" && sessionToken && <Shop token={sessionToken} />}
@@ -314,7 +328,7 @@ export default function App() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setActiveTab(t.id)}
+            onClick={() => { setActiveTab(t.id); setViewingHistoryItem(null); }}
             className={`flex-1 min-w-0 overflow-hidden flex flex-col items-center gap-1 py-2 px-0.5 rounded-xl transition cursor-pointer ${
               activeTab === t.id ? "bg-[#2b1620]/[0.04] text-[#d6407a]" : "text-[#2b1620]/50"
             }`}

@@ -7,6 +7,7 @@ interface ResultsViewProps {
   result: SkinAnalysisResult;
   token: string;
   onRestart: () => void;
+  restartLabel?: string;
 }
 
 function ProductCard({ product, highlighted, onOrder }: { product: Product; highlighted: boolean; onOrder: () => void }) {
@@ -47,13 +48,13 @@ function ProductCard({ product, highlighted, onOrder }: { product: Product; high
   );
 }
 
-export default function ResultsView({ result, token, onRestart }: ResultsViewProps) {
+export default function ResultsView({ result, token, onRestart, restartLabel }: ResultsViewProps) {
   const [orderingProduct, setOrderingProduct] = useState<Product | null>(null);
 
   return (
     <div className="animate-fade-in">
       <button onClick={onRestart} className="flex items-center gap-1.5 text-xs font-semibold text-[#d6407a] bg-white shadow-[0_4px_14px_-6px_rgba(214,64,122,0.4)] rounded-full px-3.5 py-2 mb-4 hover:-translate-y-0.5 transition cursor-pointer">
-        <ArrowLeft className="w-4 h-4" /> Nouvelle analyse
+        <ArrowLeft className="w-4 h-4" /> {restartLabel || "Nouvelle analyse"}
       </button>
 
       {!result.analyseConcluante ? (
