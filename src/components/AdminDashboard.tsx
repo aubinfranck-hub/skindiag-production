@@ -252,8 +252,15 @@ export default function AdminDashboard({ token }: { token: string }) {
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setBannerImage(canvas.toDataURL("image/jpeg", 0.82));
+        if (ctx) {
+          // JPEG ne gère pas la transparence : sans ce remplissage, tout pixel transparent de
+          // l'image d'origine (coins arrondis, fond transparent) devient NOIR à l'export —
+          // c'est exactement le contour noir observé. On remplit d'abord en blanc.
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        setBannerImage(canvas.toDataURL("image/jpeg", 0.9));
       };
       img.src = reader.result as string;
     };
