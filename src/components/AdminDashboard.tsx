@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { UserPlus, Users, Check, X, RefreshCw, Truck, Package, Star, MessageCircle, Megaphone, Trash2 } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { UserPlus, Users, Check, X, RefreshCw, Truck, Package, Star, MessageCircle, Megaphone, Trash2, ImagePlus } from "lucide-react";
 
 interface Account {
   phone: string;
@@ -237,6 +237,28 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [bannerPosition, setBannerPosition] = useState<"hero" | "secondary">("hero");
   const [bannerTags, setBannerTags] = useState("");
   const [bannerBadge, setBannerBadge] = useState("");
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Compresse/redimensionne l'image côté téléphone avant de l'enregistrer (en base64 directement
+  // en base — pas de service d'hébergement externe configuré), pour rester léger.
+  const handleBannerImageFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 900;
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setBannerImage(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
   const [savingBanner, setSavingBanner] = useState(false);
 
   const loadPromoTheme = useCallback(async () => {
@@ -425,8 +447,30 @@ export default function AdminDashboard({ token }: { token: string }) {
             className="bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
           <input placeholder="Lien (optionnel)" value={bannerLink} onChange={(e) => setBannerLink(e.target.value)}
             className="bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
-          <input placeholder="URL image (optionnel)" value={bannerImage} onChange={(e) => setBannerImage(e.target.value)}
-            className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
+          <div className="sm:col-span-2">
+            <input
+              ref={bannerFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleBannerImageFile(e.target.files[0])}
+            />
+            <button
+              type="button"
+              onClick={() => bannerFileInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620]/70 hover:bg-[#2b1620]/[0.04] cursor-pointer"
+            >
+              <ImagePlus className="w-4 h-4" /> {bannerImage ? "Changer l'image" : "Choisir une image depuis le téléphone"}
+            </button>
+            {bannerImage && (
+              <div className="mt-2 relative">
+                <img src={bannerImage} alt="Aperçu" className="w-full h-24 object-cover rounded-xl" />
+                <button type="button" onClick={() => setBannerImage("")} className="absolute top-1.5 right-1.5 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-[#2b1620]/50">Couleur 1</label>
             <input type="color" value={bannerColorFrom} onChange={(e) => setBannerColorFrom(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
