@@ -143,7 +143,7 @@ interface PromoBanner {
   sortOrder: number; active: boolean; position: "hero" | "secondary"; tags: string; badgeText: string;
 }
 let promoBanners: PromoBanner[] = [];
-let promoThemeEnabled = false;
+let promoThemeEnabled = true;
 
 function getEffectivePlan(phone: string): string {
   const record = userPlans.get(phone);
@@ -446,7 +446,8 @@ async function initDatabase(): Promise<void> {
     position: r.position === "secondary" ? "secondary" : "hero", tags: r.tags, badgeText: r.badge_text,
   }));
   const themeSetting = await pool.query("SELECT value FROM app_settings WHERE key = 'promo_theme_enabled'");
-  promoThemeEnabled = themeSetting.rows[0]?.value === "true";
+  // Activé par défaut tant qu'aucun réglage n'a encore été explicitement enregistré par l'admin.
+  promoThemeEnabled = themeSetting.rows[0] ? themeSetting.rows[0].value === "true" : true;
   console.log(`[DB] ${promoBanners.length} bandeau(x) promo, thème ${promoThemeEnabled ? "activé" : "désactivé"}.`);
 }
 
