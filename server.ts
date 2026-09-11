@@ -974,19 +974,25 @@ app.get("/api/admin/promo-banners", requireAdminAuth, (req, res) => {
 
 app.post("/api/admin/promo-banners", requireAdminAuth, async (req, res) => {
   const { brandName, title, subtitle, ctaText, linkUrl, imageUrl, colorFrom, colorTo, textColor, position, tags, badgeText } = req.body;
-  if (!brandName || !title) return res.status(400).json({ success: false, message: "Marque et titre requis." });
+  // Une image complète (déjà conçue, texte compris) suffit à elle seule — marque/titre ne sont
+  // obligatoires QUE pour le bandeau texte/dégradé de repli, quand aucune image n'est fournie.
+  if (!imageUrl && (!brandName || !title)) {
+    return res.status(400).json({ success: false, message: "Ajoutez une image, ou remplissez marque + titre." });
+  }
   if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
   const finalPosition = position === "secondary" ? "secondary" : "hero";
   try {
+    const finalBrandName = brandName || "Bandeau";
+    const finalTitle = title || "";
     const { rows } = await pool.query(
       `INSERT INTO promo_banners (brand_name, title, subtitle, cta_text, link_url, image_url, color_from, color_to, text_color, sort_order, position, tags, badge_text, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
-      [brandName, title, subtitle || "", ctaText || "Découvrir la gamme", linkUrl || "", imageUrl || "",
+      [finalBrandName, finalTitle, subtitle || "", ctaText || "Découvrir la gamme", linkUrl || "", imageUrl || "",
        colorFrom || "#d6407a", colorTo || "#8a2a54", textColor || "#ffffff", promoBanners.length,
        finalPosition, tags || "", badgeText || "", Date.now()]
     );
     promoBanners.push({
-      id: rows[0].id, brandName, title, subtitle: subtitle || "", ctaText: ctaText || "Découvrir la gamme",
+      id: rows[0].id, brandName: finalBrandName, title: finalTitle, subtitle: subtitle || "", ctaText: ctaText || "Découvrir la gamme",
       linkUrl: linkUrl || "", imageUrl: imageUrl || "", colorFrom: colorFrom || "#d6407a",
       colorTo: colorTo || "#8a2a54", textColor: textColor || "#ffffff", sortOrder: promoBanners.length,
       active: true, position: finalPosition, tags: tags || "", badgeText: badgeText || "",

@@ -290,8 +290,15 @@ export default function AdminDashboard({ token }: { token: string }) {
     }
   };
 
+  const [bannerError, setBannerError] = useState<string | null>(null);
+
   const handleCreateBanner = async (e: React.FormEvent) => {
     e.preventDefault();
+    setBannerError(null);
+    if (!bannerImage && (!bannerBrand.trim() || !bannerTitle.trim())) {
+      setBannerError("Ajoutez une image, ou remplissez au moins la marque et le titre.");
+      return;
+    }
     setSavingBanner(true);
     try {
       const res = await fetch("/api/admin/promo-banners", {
@@ -309,9 +316,11 @@ export default function AdminDashboard({ token }: { token: string }) {
         setBannerBrand(""); setBannerTitle(""); setBannerSubtitle(""); setBannerLink(""); setBannerImage("");
         setBannerTags(""); setBannerBadge("");
         loadPromoTheme();
+      } else {
+        setBannerError(data.message || "Échec de l'enregistrement.");
       }
     } catch {
-      // silencieux
+      setBannerError("Erreur réseau — vérifiez votre connexion et réessayez.");
     } finally {
       setSavingBanner(false);
     }
@@ -433,9 +442,9 @@ export default function AdminDashboard({ token }: { token: string }) {
               Bandeau simple (bas de page)
             </button>
           </div>
-          <input placeholder="Nom de la marque" required value={bannerBrand} onChange={(e) => setBannerBrand(e.target.value)}
+          <input placeholder="Nom de la marque (optionnel si image complète)" value={bannerBrand} onChange={(e) => setBannerBrand(e.target.value)}
             className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
-          <input placeholder="Titre (ex: Une peau plus belle)" required value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)}
+          <input placeholder="Titre (optionnel si image complète)" value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)}
             className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
           <input placeholder="Sous-titre (optionnel)" value={bannerSubtitle} onChange={(e) => setBannerSubtitle(e.target.value)}
             className="sm:col-span-2 bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-xs text-[#2b1620] focus:outline-none focus:border-[#d6407a]" />
@@ -483,6 +492,7 @@ export default function AdminDashboard({ token }: { token: string }) {
             className="sm:col-span-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-50 text-white font-semibold text-xs py-2.5 rounded-xl transition cursor-pointer">
             {savingBanner ? "Enregistrement..." : "Ajouter le bandeau"}
           </button>
+          {bannerError && <p className="sm:col-span-2 text-xs text-rose-500 font-medium">{bannerError}</p>}
         </form>
 
         {banners.length > 0 && (
