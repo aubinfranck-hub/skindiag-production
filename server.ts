@@ -128,10 +128,61 @@ const PLAN_LIMITS: Record<string, number> = {
   monthly: 30,
   premium: Infinity,
 };
+// Prix officiels des forfaits payants (FCFA) — source de vérité côté serveur.
+const PLAN_PRICES_FCFA: Record<string, number> = {
+  payg_day: 300,
+  monthly: 5000,
+  premium: 12000,
+};
 // phone -> { plan, activatedAt }
 const userPlans = new Map<string, { plan: string; activatedAt: number }>();
-// phone -> { count, periodStart }
-const usageTracking = new Map<string, { count: number; periodStart: number }>();
+// Repli en mémoire UNIQUEMENT si aucune base n'est configurée (dev local). En production,
+// les quotas sont lus depuis la table usage_events et survivent aux redémarrages de Render.
+const usageFallback = new Map<string, number>();
+
+// Frais de livraison fixes par commande (FCFA) — ajoutés au total payé par le client.
+const DELIVERY_FEE_FCFA = 1000;
+const MAX_ORDER_QUANTITY = 20;
+const WAVE_MERCHANT_URL = process.env.WAVE_MERCHANT_URL || "https://pay.wave.com/m/M_ci_kwfmSykm6_et/c/ci/?amount=";
+
+// Tarifs IA (FCFA par million de tokens) pour estimer le coût réel par analyse.
+// À renseigner dans les variables d'environnement Render ; à 0 le coût estimé reste à 0.
+const AI_COST_INPUT_PER_M_FCFA = Number(process.env.AI_COST_INPUT_PER_M_FCFA || 0);
+const AI_COST_OUTPUT_PER_M_FCFA = Number(process.env.AI_COST_OUTPUT_PER_M_FCFA || 0);
+
+// Nombre d'analyses consommées sur la période du forfait actif.
+async function getUsageCount(phone: string, plan: string): Promise<number> {
+  if (!pool) return usageFallback.get(phone) ?? 0;
+  const activatedAt = userPlans.get(phone)?.activatedAt ?? 0;
+  // Forfait mensuel : fenêtre glissante de 30 jours maximum, comme avant.
+  const since = plan === "monthly" ? Math.max(activatedAt, Date.now() - 30 * 24 * 60 * 60 * 1000) : activatedAt;
+  const { rows } = await pool.query(
+    "SELECT COUNT(*)::int AS n FROM usage_events WHERE phone = $1 AND created_at >= $2",
+    [phone, since]
+  );
+  return rows[0]?.n ?? 0;
+}
+
+async function recordAnalysisUsage(phone: string, zone: string): Promise<void> {
+  if (!pool) {
+    usageFallback.set(phone, (usageFallback.get(phone) ?? 0) + 1);
+    return;
+  }
+  await pool.query("INSERT INTO usage_events (phone, zone, created_at) VALUES ($1,$2,$3)", [phone, zone, Date.now()]);
+}
+
+// Journalise chaque appel IA (analyse ou contrôle qualité) avec tokens, latence et coût estimé.
+function logAiUsage(entry: { phone: string; endpoint: string; model: string; response?: any; latencyMs: number; success: boolean }): void {
+  if (!pool) return;
+  const inputTokens = Number(entry.response?.usageMetadata?.promptTokenCount ?? 0);
+  const outputTokens = Number(entry.response?.usageMetadata?.candidatesTokenCount ?? 0);
+  const cost = (inputTokens / 1_000_000) * AI_COST_INPUT_PER_M_FCFA + (outputTokens / 1_000_000) * AI_COST_OUTPUT_PER_M_FCFA;
+  pool.query(
+    `INSERT INTO ai_usage (phone, endpoint, provider, model, input_tokens, output_tokens, estimated_cost_fcfa, latency_ms, success, created_at)
+     VALUES ($1,$2,'gemini',$3,$4,$5,$6,$7,$8,$9)`,
+    [entry.phone, entry.endpoint, entry.model, inputTokens, outputTokens, cost, entry.latencyMs, entry.success, Date.now()]
+  ).catch((err) => console.error("[DB] Échec journal IA:", err.message));
+}
 // Demandes d'activation en attente de validation manuelle (paiement Wave)
 const pendingActivations = new Map<string, { phone: string; plan: string; amount: number; requestedAt: number }>();
 
@@ -283,6 +334,45 @@ async function initDatabase(): Promise<void> {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS payments (
+      id SERIAL PRIMARY KEY,
+      phone TEXT NOT NULL,
+      kind TEXT NOT NULL,                       -- 'order' | 'subscription'
+      ref_id INTEGER,                           -- id de commande si kind = 'order'
+      plan TEXT,                                -- forfait si kind = 'subscription'
+      provider TEXT NOT NULL DEFAULT 'wave',
+      amount INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'XOF',
+      status TEXT NOT NULL DEFAULT 'awaiting',  -- awaiting | pending_verification | paid | rejected
+      provider_reference TEXT,
+      created_at BIGINT NOT NULL,
+      validated_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status, created_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_payments_reference
+      ON payments (provider, provider_reference)
+      WHERE provider_reference IS NOT NULL AND provider_reference <> '';
+    CREATE TABLE IF NOT EXISTS usage_events (
+      id SERIAL PRIMARY KEY,
+      phone TEXT NOT NULL,
+      zone TEXT NOT NULL DEFAULT '',
+      created_at BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_usage_phone ON usage_events (phone, created_at DESC);
+    CREATE TABLE IF NOT EXISTS ai_usage (
+      id SERIAL PRIMARY KEY,
+      phone TEXT NOT NULL,
+      endpoint TEXT NOT NULL,
+      provider TEXT NOT NULL DEFAULT 'gemini',
+      model TEXT NOT NULL,
+      input_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens INTEGER NOT NULL DEFAULT 0,
+      estimated_cost_fcfa NUMERIC(12,2) NOT NULL DEFAULT 0,
+      latency_ms INTEGER NOT NULL DEFAULT 0,
+      success BOOLEAN NOT NULL DEFAULT true,
+      created_at BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_ai_usage_phone ON ai_usage (phone, created_at DESC);
   `);
 
   // Colonnes ajoutées après la création initiale de la table (installations existantes) —
@@ -302,6 +392,12 @@ async function initDatabase(): Promise<void> {
     ALTER TABLE promo_banners ADD COLUMN IF NOT EXISTS position TEXT NOT NULL DEFAULT 'hero';
     ALTER TABLE promo_banners ADD COLUMN IF NOT EXISTS tags TEXT NOT NULL DEFAULT '';
     ALTER TABLE promo_banners ADD COLUMN IF NOT EXISTS badge_text TEXT NOT NULL DEFAULT '';
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS unit_price INTEGER;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS products_total INTEGER;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_fee INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_amount INTEGER;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'legacy';
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_at BIGINT;
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -602,19 +698,42 @@ app.get("/api/admin/pending-activations", requireAdminAuth, (req, res) => {
   res.json({ success: true, pending: Array.from(pendingActivations.values()) });
 });
 
-app.post("/api/admin/activate-plan/:phone", requireAdminAuth, (req, res) => {
+app.post("/api/admin/activate-plan/:phone", requireAdminAuth, async (req, res) => {
   const { phone } = req.params;
   const pending = pendingActivations.get(phone);
   if (!pending) return res.status(404).json({ success: false, message: "Aucune demande en attente pour ce numéro." });
   setUserPlan(phone, pending.plan);
   pendingActivations.delete(phone);
+  if (pool) {
+    try {
+      // Valide le paiement enregistré à la demande ; à défaut (demande antérieure au correctif), en crée un.
+      const upd = await pool.query(
+        `UPDATE payments SET status = 'paid', validated_at = $1
+         WHERE id = (SELECT id FROM payments WHERE phone = $2 AND kind = 'subscription' AND status IN ('awaiting','pending_verification') ORDER BY created_at DESC LIMIT 1)`,
+        [Date.now(), phone]
+      );
+      if (!upd.rowCount) {
+        await pool.query(
+          `INSERT INTO payments (phone, kind, plan, amount, status, created_at, validated_at) VALUES ($1,'subscription',$2,$3,'paid',$4,$4)`,
+          [phone, pending.plan, pending.amount, Date.now()]
+        );
+      }
+    } catch (err: any) {
+      console.error("[DB] Échec enregistrement paiement abonnement:", err.message);
+    }
+  }
   res.json({ success: true });
 });
 
-app.get("/api/user/status", requireAuth, (req: any, res) => {
+app.get("/api/user/status", requireAuth, async (req: any, res) => {
   const acc = userAccounts.get(req.session.phone);
   const plan = getEffectivePlan(req.session.phone);
-  const usage = usageTracking.get(req.session.phone);
+  let used = 0;
+  try {
+    used = await getUsageCount(req.session.phone, plan);
+  } catch (err: any) {
+    console.error("[DB] Échec lecture usage:", err.message);
+  }
   res.json({
     success: true,
     phone: req.session.phone,
@@ -622,14 +741,27 @@ app.get("/api/user/status", requireAuth, (req: any, res) => {
     plan,
     // Infinity ne se sérialise pas en JSON (devient null) — on envoie -1 pour "illimité"
     limit: PLAN_LIMITS[plan] === Infinity ? -1 : (PLAN_LIMITS[plan] ?? 0),
-    used: usage?.count ?? 0,
+    used,
   });
 });
 
-app.post("/api/user/request-activation", requireAuth, (req: any, res) => {
-  const { plan, amount } = req.body;
-  if (!plan || !amount) return res.status(400).json({ success: false, message: "Forfait et montant requis." });
+app.post("/api/user/request-activation", requireAuth, async (req: any, res) => {
+  const { plan } = req.body;
+  if (!plan) return res.status(400).json({ success: false, message: "Forfait requis." });
+  // Le montant vient toujours du serveur : on ne fait jamais confiance au prix envoyé par le client.
+  const amount = PLAN_PRICES_FCFA[plan];
+  if (!amount) return res.status(400).json({ success: false, message: "Forfait inconnu." });
   pendingActivations.set(req.session.phone, { phone: req.session.phone, plan, amount, requestedAt: Date.now() });
+  if (pool) {
+    try {
+      await pool.query(
+        `INSERT INTO payments (phone, kind, plan, amount, status, created_at) VALUES ($1,'subscription',$2,$3,'pending_verification',$4)`,
+        [req.session.phone, plan, amount, Date.now()]
+      );
+    } catch (err: any) {
+      console.error("[DB] Échec enregistrement demande d'activation:", err.message);
+    }
+  }
   res.json({ success: true });
 });
 
@@ -643,6 +775,7 @@ app.post("/api/skindiag/check-quality", analyzeLimiter, requireAuth, async (req:
       return res.status(400).json({ success: false, message: "Photo requise." });
     }
     const isVideo = mimeType.startsWith("video/");
+    const qualityStartedAt = Date.now();
     const response = await retryWithBackoff(() => getAIClient().models.generateContent({
       model: "gemini-3.5-flash",
       contents: {
@@ -671,6 +804,7 @@ Réponds UNIQUEMENT en JSON selon le schéma.`,
       },
     }));
     const parsed = JSON.parse(response.text || "{}");
+    logAiUsage({ phone: req.session.phone, endpoint: "check-quality", model: "gemini-3.5-flash", response, latencyMs: Date.now() - qualityStartedAt, success: true });
     res.json({ success: true, qualiteImage: parsed });
   } catch (err: any) {
     console.error("[SkinDiag CheckQuality] Erreur:", err.message);
@@ -689,13 +823,8 @@ app.post("/api/skindiag/analyze", analyzeLimiter, requireAuth, async (req: any, 
     const phone = req.session.phone;
     const plan = getEffectivePlan(phone);
     const limit = PLAN_LIMITS[plan] ?? 0;
-    const usage = usageTracking.get(phone) || { count: 0, periodStart: Date.now() };
-    // Réinitialise le compteur mensuel pour les forfaits limités par mois (30 jours glissants)
-    if (plan === "monthly" && Date.now() - usage.periodStart > 30 * 24 * 60 * 60 * 1000) {
-      usage.count = 0;
-      usage.periodStart = Date.now();
-    }
-    if (usage.count >= limit) {
+    const usedCount = await getUsageCount(phone, plan);
+    if (usedCount >= limit) {
       return res.status(403).json({
         success: false,
         message: plan === "free_expired"
@@ -756,6 +885,7 @@ Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
 
     const actifsEnum = ["vitamine_c", "niacinamide", "acide_hyaluronique", "ceramides", "glycerine", "acide_azelaique", "beurre_de_karite", "protection_solaire", "retinoides", "uree"];
 
+    const aiStartedAt = Date.now();
     const response = await retryWithBackoff(() => getAIClient().models.generateContent({
       model: "gemini-3.5-flash",
       contents: {
@@ -827,7 +957,8 @@ Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
     }));
 
     const parsed = JSON.parse(response.text || "{}");
-
+    // Journalise le coût de l'appel IA, qu'il aboutisse à une analyse facturable ou non.
+    logAiUsage({ phone, endpoint: "analyze", model: "gemini-3.5-flash", response, latencyMs: Date.now() - aiStartedAt, success: true });
     // Photo/vidéo de mauvaise qualité : on s'arrête ici, aucune analyse fabriquée, pas de
     // décompte du quota (on ne pénalise pas l'utilisateur pour une photo à reprendre).
     if (parsed.qualiteImage && (parsed.qualiteImage.decision === "C_insuffisante" || parsed.qualiteImage.acceptable === false)) {
@@ -855,9 +986,8 @@ Réponds UNIQUEMENT en JSON structuré selon le schéma fourni.`;
     const produitsPartenaires = scoredProducts.filter((p) => p.is_sponsored);
     const autresProduits = scoredProducts.filter((p) => !p.is_sponsored);
 
-    // Incrémente le compteur d'usage seulement après une analyse réussie et concluante
-    usage.count += 1;
-    usageTracking.set(phone, usage);
+    // Enregistre l'analyse consommée (persistant) seulement après une analyse réussie et concluante
+    await recordAnalysisUsage(phone, zone);
 
     const resultPayload = {
       zoneAnalysee: zone,
@@ -919,27 +1049,113 @@ app.get("/api/skindiag/history", requireAuth, async (req: any, res) => {
 app.post("/api/skindiag/order", requireAuth, async (req: any, res) => {
   if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
   const { productId, quantity, deliveryName, deliveryPhone, deliveryAddress } = req.body;
-  if (!productId || !deliveryName || !deliveryPhone || !deliveryAddress) {
+  const name = String(deliveryName || "").trim().slice(0, 120);
+  const dPhone = String(deliveryPhone || "").trim().slice(0, 30);
+  const address = String(deliveryAddress || "").trim().slice(0, 300);
+  if (!productId || !name || !dPhone || !address) {
     return res.status(400).json({ success: false, message: "Informations de livraison incomplètes." });
   }
+  const qty = Math.floor(Number(quantity) || 1);
+  if (!Number.isFinite(qty) || qty < 1 || qty > MAX_ORDER_QUANTITY) {
+    return res.status(400).json({ success: false, message: `Quantité invalide (1 à ${MAX_ORDER_QUANTITY}).` });
+  }
+  const client = await pool.connect();
   try {
-    const { rows } = await pool.query(
-      `INSERT INTO orders (phone, product_id, quantity, delivery_name, delivery_phone, delivery_address, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [req.session.phone, productId, quantity || 1, deliveryName, deliveryPhone, deliveryAddress, Date.now()]
+    // Le prix vient TOUJOURS de la base : jamais du client.
+    const prod = await client.query("SELECT id, price_fcfa, availability_abidjan FROM beauty_products WHERE id = $1", [productId]);
+    if (!prod.rows.length) return res.status(404).json({ success: false, message: "Produit introuvable." });
+    if (!prod.rows[0].availability_abidjan) return res.status(400).json({ success: false, message: "Produit indisponible actuellement." });
+
+    const unitPrice: number = prod.rows[0].price_fcfa;
+    const productsTotal = unitPrice * qty;
+    const total = productsTotal + DELIVERY_FEE_FCFA;
+    const now = Date.now();
+
+    await client.query("BEGIN");
+    const { rows } = await client.query(
+      `INSERT INTO orders (phone, product_id, quantity, delivery_name, delivery_phone, delivery_address, created_at,
+                           unit_price, products_total, delivery_fee, total_amount, payment_status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'awaiting_payment') RETURNING id`,
+      [req.session.phone, productId, qty, name, dPhone, address, now, unitPrice, productsTotal, DELIVERY_FEE_FCFA, total]
     );
-    res.json({ success: true, orderId: rows[0].id });
+    const orderId = rows[0].id;
+    await client.query(
+      `INSERT INTO payments (phone, kind, ref_id, amount, status, created_at) VALUES ($1,'order',$2,$3,'awaiting',$4)`,
+      [req.session.phone, orderId, total, now]
+    );
+    await client.query("COMMIT");
+    res.json({
+      success: true,
+      orderId,
+      unitPrice,
+      productsTotal,
+      deliveryFee: DELIVERY_FEE_FCFA,
+      total,
+      payUrl: `${WAVE_MERCHANT_URL}${total}`,
+    });
   } catch (err: any) {
+    await client.query("ROLLBACK").catch(() => {});
     console.error("[DB] Échec création commande:", err.message);
     res.status(500).json({ success: false, message: "Impossible d'enregistrer la commande." });
+  } finally {
+    client.release();
+  }
+});
+
+// Le client déclare avoir payé via Wave et fournit l'identifiant de transaction.
+// La commande passe en « paiement à vérifier » : l'admin la valide après contrôle du reçu Wave.
+app.post("/api/skindiag/order/:id/confirm-payment", requireAuth, async (req: any, res) => {
+  if (!pool) return res.status(503).json({ success: false, message: "Service indisponible." });
+  const reference = String(req.body?.reference || "").trim().slice(0, 64);
+  if (reference.length < 4) {
+    return res.status(400).json({ success: false, message: "Saisissez l'identifiant de transaction Wave (reçu de paiement)." });
+  }
+  const orderId = Number(req.params.id);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const order = await client.query("SELECT id, payment_status FROM orders WHERE id = $1 AND phone = $2 FOR UPDATE", [orderId, req.session.phone]);
+    if (!order.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ success: false, message: "Commande introuvable." });
+    }
+    if (order.rows[0].payment_status === "paid") {
+      await client.query("ROLLBACK");
+      return res.json({ success: true, alreadyPaid: true });
+    }
+    const upd = await client.query(
+      `UPDATE payments SET status = 'pending_verification', provider_reference = $1
+       WHERE kind = 'order' AND ref_id = $2 AND status IN ('awaiting','pending_verification','rejected')`,
+      [reference, orderId]
+    );
+    if (!upd.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ success: false, message: "Paiement introuvable pour cette commande." });
+    }
+    await client.query("UPDATE orders SET payment_status = 'pending_verification' WHERE id = $1", [orderId]);
+    await client.query("COMMIT");
+    res.json({ success: true });
+  } catch (err: any) {
+    await client.query("ROLLBACK").catch(() => {});
+    if (err.code === "23505") {
+      return res.status(409).json({ success: false, message: "Cet identifiant de transaction a déjà été utilisé." });
+    }
+    console.error("[DB] Échec confirmation paiement:", err.message);
+    res.status(500).json({ success: false, message: "Impossible d'enregistrer le paiement." });
+  } finally {
+    client.release();
   }
 });
 
 app.get("/api/admin/orders", requireAdminAuth, async (req, res) => {
   if (!pool) return res.json({ success: true, orders: [] });
   const { rows } = await pool.query(`
-    SELECT o.*, p.name AS product_name, p.price_fcfa
-    FROM orders o JOIN beauty_products p ON p.id = o.product_id
+    SELECT o.*, p.name AS product_name, p.price_fcfa,
+           COALESCE(o.total_amount, p.price_fcfa * o.quantity) AS display_total,
+           pay.provider_reference AS payment_reference
+    FROM orders o
+    JOIN beauty_products p ON p.id = o.product_id
+    LEFT JOIN payments pay ON pay.kind = 'order' AND pay.ref_id = o.id
     ORDER BY o.created_at DESC LIMIT 100
   `);
   res.json({ success: true, orders: rows });
@@ -950,6 +1166,96 @@ app.post("/api/admin/orders/:id/status", requireAdminAuth, async (req, res) => {
   const { status } = req.body;
   await pool.query("UPDATE orders SET status = $1 WHERE id = $2", [status, req.params.id]);
   res.json({ success: true });
+});
+
+// Validation (ou rejet) du paiement d'une commande par l'admin, après contrôle du reçu Wave.
+app.post("/api/admin/orders/:id/payment", requireAdminAuth, async (req, res) => {
+  if (!pool) return res.status(503).json({ success: false });
+  const { action } = req.body;
+  if (action !== "paid" && action !== "reject") {
+    return res.status(400).json({ success: false, message: "Action invalide." });
+  }
+  const orderId = Number(req.params.id);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const now = Date.now();
+    if (action === "paid") {
+      const upd = await client.query(
+        "UPDATE payments SET status = 'paid', validated_at = $1 WHERE kind = 'order' AND ref_id = $2",
+        [now, orderId]
+      );
+      if (!upd.rowCount) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ success: false, message: "Paiement introuvable." });
+      }
+      await client.query("UPDATE orders SET payment_status = 'paid', paid_at = $1 WHERE id = $2", [now, orderId]);
+    } else {
+      // Rejet : la référence est libérée et le client peut resoumettre un reçu valide.
+      await client.query(
+        "UPDATE payments SET status = 'rejected', provider_reference = NULL WHERE kind = 'order' AND ref_id = $1",
+        [orderId]
+      );
+      await client.query("UPDATE orders SET payment_status = 'awaiting_payment', paid_at = NULL WHERE id = $1", [orderId]);
+    }
+    await client.query("COMMIT");
+    res.json({ success: true });
+  } catch (err: any) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("[DB] Échec validation paiement:", err.message);
+    res.status(500).json({ success: false, message: "Impossible de mettre à jour le paiement." });
+  } finally {
+    client.release();
+  }
+});
+
+// Tableau de bord financier : revenus encaissés (paiements validés), coût IA estimé, marge brute.
+app.get("/api/admin/finance", requireAdminAuth, async (req, res) => {
+  if (!pool) return res.json({ success: true, finance: null });
+  try {
+    const [subs, orders, pending, ai, analyses, topUsers] = await Promise.all([
+      pool.query(`SELECT COALESCE(SUM(amount),0)::int AS total, COUNT(*)::int AS n FROM payments WHERE kind='subscription' AND status='paid'`),
+      pool.query(`SELECT COALESCE(SUM(products_total),0)::int AS products, COALESCE(SUM(delivery_fee),0)::int AS delivery, COUNT(*)::int AS n
+                  FROM orders WHERE payment_status = 'paid'`),
+      pool.query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(amount),0)::int AS amount FROM payments WHERE status = 'pending_verification'`),
+      pool.query(`SELECT COALESCE(SUM(estimated_cost_fcfa),0)::float AS cost, COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
+                         COALESCE(SUM(output_tokens),0)::bigint AS output_tokens, COUNT(*)::int AS calls FROM ai_usage`),
+      pool.query(`SELECT COUNT(*)::int AS n FROM usage_events`),
+      pool.query(`SELECT u.phone, COUNT(*)::int AS analyses,
+                         COALESCE((SELECT SUM(a.estimated_cost_fcfa) FROM ai_usage a WHERE a.phone = u.phone),0)::float AS ai_cost,
+                         COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.phone = u.phone AND p.kind='subscription' AND p.status='paid'),0)::int AS paid
+                  FROM usage_events u GROUP BY u.phone ORDER BY analyses DESC LIMIT 10`),
+    ]);
+    const subscriptionRevenue = subs.rows[0].total;
+    const productRevenue = orders.rows[0].products;
+    const deliveryRevenue = orders.rows[0].delivery;
+    const aiCost = Math.round(ai.rows[0].cost);
+    res.json({
+      success: true,
+      finance: {
+        subscriptionRevenue,
+        subscriptionsPaid: subs.rows[0].n,
+        productRevenue,
+        deliveryRevenue,
+        ordersPaid: orders.rows[0].n,
+        totalRevenue: subscriptionRevenue + productRevenue + deliveryRevenue,
+        pendingPayments: pending.rows[0].n,
+        pendingAmount: pending.rows[0].amount,
+        aiCost,
+        aiCalls: ai.rows[0].calls,
+        aiInputTokens: Number(ai.rows[0].input_tokens),
+        aiOutputTokens: Number(ai.rows[0].output_tokens),
+        analyses: analyses.rows[0].n,
+        // Marge après coût IA seulement : n'inclut ni le coût d'achat des produits ni celui des livreurs.
+        grossAfterAi: subscriptionRevenue + productRevenue + deliveryRevenue - aiCost,
+        aiCostConfigured: AI_COST_INPUT_PER_M_FCFA > 0 || AI_COST_OUTPUT_PER_M_FCFA > 0,
+        topUsers: topUsers.rows,
+      },
+    });
+  } catch (err: any) {
+    console.error("[DB] Échec tableau financier:", err.message);
+    res.status(500).json({ success: false, message: "Impossible de charger les finances." });
+  }
 });
 
 // --- Thème promotionnel : lecture publique, gestion admin ---
