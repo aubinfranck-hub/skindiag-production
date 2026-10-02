@@ -297,7 +297,7 @@ export default function App() {
             currentPlan={userStatus?.plan || "free_trial"}
             used={userStatus?.used || 0}
             limit={userStatus?.limit ?? 3}
-            onRequestSent={() => setQuotaMessage(null)}
+            onRequestSent={() => { setQuotaMessage(null); loadStatus(sessionToken); }}
           />
         )}
 

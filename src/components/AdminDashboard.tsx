@@ -26,7 +26,36 @@ interface Order {
   delivery_address: string;
   status: string;
   created_at: number;
+  display_total: number;
+  delivery_fee: number;
+  payment_status: string;
+  payment_reference: string | null;
 }
+
+interface Finance {
+  subscriptionRevenue: number;
+  subscriptionsPaid: number;
+  productRevenue: number;
+  deliveryRevenue: number;
+  ordersPaid: number;
+  totalRevenue: number;
+  pendingPayments: number;
+  pendingAmount: number;
+  aiCost: number;
+  aiCalls: number;
+  analyses: number;
+  grossAfterAi: number;
+  aiCostConfigured: boolean;
+  topUsers: { phone: string; analyses: number; ai_cost: number; paid: number }[];
+}
+
+const PAYMENT_STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  awaiting_payment: { label: "En attente de paiement", className: "bg-amber-100 text-amber-700" },
+  processing: { label: "Paiement en ligne en cours", className: "bg-violet-100 text-violet-700" },
+  pending_verification: { label: "Paiement à vérifier", className: "bg-sky-100 text-sky-700" },
+  paid: { label: "Payé", className: "bg-emerald-100 text-emerald-700" },
+  legacy: { label: "Ancienne commande", className: "bg-[#2b1620]/[0.06] text-[#2b1620]/50" },
+};
 
 interface ProductRow {
   id: number;
@@ -63,6 +92,7 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [pending, setPending] = useState<PendingActivation[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [finance, setFinance] = useState<Finance | null>(null);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -89,20 +119,23 @@ export default function AdminDashboard({ token }: { token: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [accRes, pendRes, ordersRes, productsRes] = await Promise.all([
+      const [accRes, pendRes, ordersRes, productsRes, financeRes] = await Promise.all([
         fetch("/api/admin/accounts", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/admin/pending-activations", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/admin/orders", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/skindiag/products"),
+        fetch("/api/admin/finance", { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const accData = await accRes.json();
       const pendData = await pendRes.json();
       const ordersData = await ordersRes.json();
       const productsData = await productsRes.json();
+      const financeData = await financeRes.json();
       if (accData.success) setAccounts(accData.accounts);
       if (pendData.success) setPending(pendData.pending);
       if (ordersData.success) setOrders(ordersData.orders);
       if (productsData.success) setProducts(productsData.products);
+      if (financeData.success) setFinance(financeData.finance);
     } catch {
       // silencieux, l'utilisateur peut rafraîchir
     } finally {
@@ -217,6 +250,19 @@ export default function AdminDashboard({ token }: { token: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
+      });
+      load();
+    } catch {
+      // silencieux
+    }
+  };
+
+  const updateOrderPayment = async (orderId: number, action: "paid" | "reject") => {
+    try {
+      await fetch(`/api/admin/orders/${orderId}/payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action }),
       });
       load();
     } catch {
@@ -343,9 +389,9 @@ export default function AdminDashboard({ token }: { token: string }) {
     loadPromoTheme();
   };
 
-  const totalRevenue = orders
-    .filter((o) => o.status === "delivered")
-    .reduce((sum, o) => sum + o.price_fcfa * o.quantity, 0);
+  // Revenu = uniquement ce qui a été encaissé (paiement validé), plus seulement les commandes livrées.
+  const totalRevenue = finance?.totalRevenue
+    ?? orders.filter((o) => o.payment_status === "paid").reduce((sum, o) => sum + Number(o.display_total), 0);
 
   const generatePassword = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -412,7 +458,7 @@ export default function AdminDashboard({ token }: { token: string }) {
         <div className="premium-card rounded-2xl p-3.5 text-center">
           <Package className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
           <span className="text-lg font-bold text-[#2b1620] block">{totalRevenue.toLocaleString("fr-FR")}</span>
-          <span className="text-[10px] text-[#2b1620]/50">FCFA (livrées)</span>
+          <span className="text-[10px] text-[#2b1620]/50">FCFA encaissés</span>
         </div>
         <div className="premium-card rounded-2xl p-3.5 text-center">
           <Star className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
@@ -420,6 +466,43 @@ export default function AdminDashboard({ token }: { token: string }) {
           <span className="text-[10px] text-[#2b1620]/50">Paiements en attente</span>
         </div>
       </div>
+
+      {/* Finances : revenus encaissés, coût IA, marge */}
+      {finance && (
+        <div className="premium-card rounded-2xl p-5">
+          <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-[#2b1620]/50 font-semibold mb-3">
+            <Package className="w-3.5 h-3.5" /> Finances (paiements validés)
+          </h3>
+          <div className="space-y-1.5 text-sm text-[#2b1620]">
+            <div className="flex justify-between"><span className="text-[#2b1620]/60">Abonnements ({finance.subscriptionsPaid})</span><span>{finance.subscriptionRevenue.toLocaleString("fr-FR")} F</span></div>
+            <div className="flex justify-between"><span className="text-[#2b1620]/60">Produits vendus ({finance.ordersPaid} cmd)</span><span>{finance.productRevenue.toLocaleString("fr-FR")} F</span></div>
+            <div className="flex justify-between"><span className="text-[#2b1620]/60">Livraison encaissée</span><span>{finance.deliveryRevenue.toLocaleString("fr-FR")} F</span></div>
+            <div className="flex justify-between font-semibold pt-1.5 border-t border-[#2b1620]/10"><span>Total encaissé</span><span>{finance.totalRevenue.toLocaleString("fr-FR")} F</span></div>
+            <div className="flex justify-between"><span className="text-[#2b1620]/60">Coût IA estimé ({finance.aiCalls} appels, {finance.analyses} analyses)</span><span>− {finance.aiCost.toLocaleString("fr-FR")} F</span></div>
+            <div className="flex justify-between font-bold text-[#d6407a]"><span>Marge après coût IA</span><span>{finance.grossAfterAi.toLocaleString("fr-FR")} F</span></div>
+          </div>
+          <p className="text-[10px] text-[#2b1620]/40 mt-2">
+            La marge n'inclut pas le coût d'achat des produits ni le coût des livreurs.
+            {!finance.aiCostConfigured && " Coût IA à 0 : renseignez AI_COST_INPUT_PER_M_FCFA et AI_COST_OUTPUT_PER_M_FCFA sur Render."}
+          </p>
+          {finance.pendingPayments > 0 && (
+            <p className="text-xs font-semibold text-sky-700 mt-2">
+              {finance.pendingPayments} paiement(s) à vérifier — {finance.pendingAmount.toLocaleString("fr-FR")} F en attente
+            </p>
+          )}
+          {finance.topUsers.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-[#2b1620]/10">
+              <span className="text-[10px] uppercase tracking-wider text-[#2b1620]/40 font-semibold">Utilisateurs les plus actifs</span>
+              {finance.topUsers.map((u) => (
+                <div key={u.phone} className="flex justify-between text-[11px] text-[#2b1620]/70 mt-1">
+                  <span className="font-mono">{u.phone}</span>
+                  <span>{u.analyses} analyses · coût IA {Math.round(u.ai_cost).toLocaleString("fr-FR")} F · payé {u.paid.toLocaleString("fr-FR")} F</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Thème promotionnel */}
       <div className="premium-card rounded-2xl p-5">
@@ -699,8 +782,25 @@ export default function AdminDashboard({ token }: { token: string }) {
                     <span className="text-[11px] text-[#2b1620]/50">{o.delivery_name} · {o.delivery_phone}</span>
                     <p className="text-[11px] text-[#2b1620]/50 mt-0.5">{o.delivery_address}</p>
                   </div>
-                  <span className="text-sm font-bold text-[#d6407a] shrink-0">{(o.price_fcfa * o.quantity).toLocaleString("fr-FR")} F</span>
+                  <span className="text-sm font-bold text-[#d6407a] shrink-0">{Number(o.display_total).toLocaleString("fr-FR")} F</span>
                 </div>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${(PAYMENT_STATUS_LABELS[o.payment_status] || PAYMENT_STATUS_LABELS.legacy).className}`}>
+                    {(PAYMENT_STATUS_LABELS[o.payment_status] || PAYMENT_STATUS_LABELS.legacy).label}
+                  </span>
+                  {o.delivery_fee > 0 && <span className="text-[10px] text-[#2b1620]/40">dont livraison {o.delivery_fee.toLocaleString("fr-FR")} F</span>}
+                  {o.payment_reference && <span className="text-[10px] font-mono text-[#2b1620]/60">Réf. Wave : {o.payment_reference}</span>}
+                </div>
+                {o.payment_status === "pending_verification" && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <button onClick={() => updateOrderPayment(o.id, "paid")} className="text-[10px] font-semibold px-3 py-1.5 rounded-full bg-emerald-600 text-white cursor-pointer">
+                      Valider le paiement
+                    </button>
+                    <button onClick={() => updateOrderPayment(o.id, "reject")} className="text-[10px] font-semibold px-3 py-1.5 rounded-full bg-white text-rose-500 cursor-pointer">
+                      Rejeter
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
                   {["pending", "confirmed", "shipped", "delivered", "cancelled"].map((s) => (
                     <button

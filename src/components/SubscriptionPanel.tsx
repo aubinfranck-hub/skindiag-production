@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Check, ExternalLink, Sparkles } from "lucide-react";
+import JekoPay from "./JekoPay";
 
 interface SubscriptionPanelProps {
   token: string;
@@ -76,6 +77,14 @@ export default function SubscriptionPanel({ token, currentPlan, used, limit, onR
       </div>
 
       <div className="premium-card rounded-2xl p-5">
+        <JekoPay
+          key={selected.id}
+          token={token}
+          kind="subscription"
+          plan={selected.id}
+          amount={selected.price}
+          onSuccess={onRequestSent}
+          fallback={<>
         <div className="flex items-start gap-3 bg-[#fdf1f5] p-3.5 rounded-xl mb-3">
           <span className="shrink-0 w-6 h-6 rounded-full bg-[#d6407a] text-white text-xs font-bold flex items-center justify-center">1</span>
           <p className="text-sm text-[#2b1620]">Payez <strong>{selected.price.toLocaleString("fr-FR")}F</strong> via Wave.</p>
@@ -100,6 +109,8 @@ export default function SubscriptionPanel({ token, currentPlan, used, limit, onR
           <Sparkles className="w-4 h-4" /> {sent ? "Demande envoyée ✓" : "J'ai payé — Confirmer"}
         </button>
         {error && <p className="text-xs text-rose-400 mt-2">{error}</p>}
+          </>}
+        />
       </div>
     </div>
   );
