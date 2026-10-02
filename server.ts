@@ -5,6 +5,7 @@ import path from "path";
 import crypto from "crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 import rateLimit from "express-rate-limit";
+import { registerJekoPayments } from "./src/server/jeko.routes";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -398,6 +399,7 @@ async function initDatabase(): Promise<void> {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_amount INTEGER;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'legacy';
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_at BIGINT;
+    ALTER TABLE payments ADD COLUMN IF NOT EXISTS external_id TEXT;
   `);
 
   const accountsRes = await pool.query("SELECT * FROM accounts");
@@ -549,7 +551,12 @@ async function initDatabase(): Promise<void> {
 
 app.use(cors());
 // Limite augmentée pour accepter les courtes vidéos (mode capture vidéo), pas seulement les photos
-app.use(express.json({ limit: "40mb" }));
+app.use(express.json({
+  limit: "40mb",
+  // Conserve le corps brut (avant parsing) : la signature HMAC des webhooks Jèko porte sur les
+  // octets exacts reçus, pas sur du JSON re-sérialisé.
+  verify: (req: any, _res, buf) => { req.rawBody = buf; },
+}));
 
 const analyzeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 
@@ -1124,8 +1131,8 @@ app.post("/api/skindiag/order/:id/confirm-payment", requireAuth, async (req: any
       return res.json({ success: true, alreadyPaid: true });
     }
     const upd = await client.query(
-      `UPDATE payments SET status = 'pending_verification', provider_reference = $1
-       WHERE kind = 'order' AND ref_id = $2 AND status IN ('awaiting','pending_verification','rejected')`,
+      `UPDATE payments SET status = 'pending_verification', provider = 'wave', provider_reference = $1
+       WHERE kind = 'order' AND ref_id = $2 AND status IN ('awaiting','pending_verification','rejected','failed')`,
       [reference, orderId]
     );
     if (!upd.rowCount) {
@@ -1366,6 +1373,17 @@ app.post("/api/admin/products/:id/sponsor", requireAdminAuth, async (req, res) =
   const { is_sponsored, is_partner } = req.body;
   await pool.query("UPDATE beauty_products SET is_sponsored = $1, is_partner = $2 WHERE id = $3", [is_sponsored === true, is_partner === true, req.params.id]);
   res.json({ success: true });
+});
+
+// Paiement en ligne Mobile Money (Orange/Wave/MTN/Moov) via Jèko : commandes et forfaits,
+// confirmation automatique par webhook. Doit rester AVANT la route « * » de startServer().
+registerJekoPayments(app, {
+  pool,
+  requireAuth,
+  requireAdminAuth,
+  planPrices: PLAN_PRICES_FCFA,
+  setUserPlan,
+  clearPendingActivation: (phone: string) => { pendingActivations.delete(phone); },
 });
 
 async function startServer() {

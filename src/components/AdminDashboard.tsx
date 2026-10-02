@@ -51,6 +51,7 @@ interface Finance {
 
 const PAYMENT_STATUS_LABELS: Record<string, { label: string; className: string }> = {
   awaiting_payment: { label: "En attente de paiement", className: "bg-amber-100 text-amber-700" },
+  processing: { label: "Paiement en ligne en cours", className: "bg-violet-100 text-violet-700" },
   pending_verification: { label: "Paiement à vérifier", className: "bg-sky-100 text-sky-700" },
   paid: { label: "Payé", className: "bg-emerald-100 text-emerald-700" },
   legacy: { label: "Ancienne commande", className: "bg-[#2b1620]/[0.06] text-[#2b1620]/50" },

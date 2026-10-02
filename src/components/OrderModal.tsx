@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Truck, Check, ExternalLink } from "lucide-react";
 import { Product } from "../types";
+import JekoPay from "./JekoPay";
 
 interface OrderModalProps {
   product: Product;
@@ -29,7 +30,7 @@ export default function OrderModal({ product, token, onClose }: OrderModalProps)
   const [submitting, setSubmitting] = useState(false);
   const [order, setOrder] = useState<CreatedOrder | null>(null);
   const [reference, setReference] = useState("");
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<"manual" | "online" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const safeQty = Math.min(Math.max(Math.floor(quantity) || 1, 1), 20);
@@ -62,7 +63,8 @@ export default function OrderModal({ product, token, onClose }: OrderModalProps)
     }
   };
 
-  // Étape 2 : le client a payé via Wave et envoie l'identifiant de transaction pour vérification.
+  // Repli (paiement en ligne indisponible) : le client a payé via Wave et envoie l'identifiant
+  // de transaction ; l'admin valide ensuite après contrôle du reçu.
   const handleConfirmPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!order) return;
@@ -76,7 +78,7 @@ export default function OrderModal({ product, token, onClose }: OrderModalProps)
       });
       const data = await res.json();
       if (data.success) {
-        setDone(true);
+        setDone("manual");
       } else {
         setError(data.message || "Échec de l'enregistrement du paiement.");
       }
@@ -89,6 +91,41 @@ export default function OrderModal({ product, token, onClose }: OrderModalProps)
 
   const inputClass =
     "w-full bg-[#fdf1f5] border border-[#2b1620]/10 rounded-xl px-3 py-2.5 text-sm text-[#2b1620] placeholder-[#2b1620]/30 focus:outline-none focus:border-[#d6407a]";
+
+  const manualWave = order && (
+    <form onSubmit={handleConfirmPayment} className="space-y-3">
+      <div className="flex items-start gap-3">
+        <span className="shrink-0 w-6 h-6 rounded-full bg-[#d6407a] text-white text-xs font-bold flex items-center justify-center">1</span>
+        <p className="text-sm text-[#2b1620]">Payez <strong>{fmt(order.total)}</strong> via Wave.</p>
+      </div>
+      <a
+        href={order.payUrl}
+        target="_blank" rel="noopener noreferrer"
+        className="w-full flex items-center justify-center gap-2 bg-[#1DC48D] hover:bg-[#17a878] text-white font-semibold text-sm py-3.5 rounded-xl transition cursor-pointer"
+      >
+        <ExternalLink className="w-4 h-4" /> Ouvrir Wave — Payer {fmt(order.total)}
+      </a>
+
+      <div className="flex items-start gap-3">
+        <span className="shrink-0 w-6 h-6 rounded-full bg-[#d6407a] text-white text-xs font-bold flex items-center justify-center">2</span>
+        <p className="text-sm text-[#2b1620]">Saisissez l'identifiant de transaction indiqué sur votre reçu Wave.</p>
+      </div>
+      <input
+        type="text" required minLength={4} placeholder="Ex : T_XXXXXXXXXXXX" value={reference}
+        onChange={(e) => setReference(e.target.value)}
+        className={inputClass}
+      />
+
+      {error && <p className="text-xs text-rose-500">{error}</p>}
+
+      <button
+        type="submit" disabled={submitting}
+        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-50 text-white font-semibold text-sm py-3.5 rounded-xl transition cursor-pointer"
+      >
+        <Check className="w-4 h-4" /> {submitting ? "Envoi..." : "J'ai payé — Confirmer"}
+      </button>
+    </form>
+  );
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -105,16 +142,20 @@ export default function OrderModal({ product, token, onClose }: OrderModalProps)
             <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
               <Check className="w-7 h-7 text-emerald-600" />
             </div>
-            <p className="text-sm font-semibold text-[#2b1620]">Paiement reçu — en cours de vérification</p>
+            <p className="text-sm font-semibold text-[#2b1620]">
+              {done === "online" ? "Paiement confirmé — commande validée" : "Paiement reçu — en cours de vérification"}
+            </p>
             <p className="text-xs text-[#2b1620]/50 mt-1">
-              Dès validation de votre paiement Wave, nous vous contactons pour organiser la livraison.
+              {done === "online"
+                ? "Nous vous contactons pour organiser la livraison."
+                : "Dès validation de votre paiement Wave, nous vous contactons pour organiser la livraison."}
             </p>
             <button onClick={onClose} className="w-full mt-5 bg-[#2b1620]/[0.04] text-[#2b1620] font-medium text-sm py-3 rounded-xl cursor-pointer">
               Fermer
             </button>
           </div>
         ) : order ? (
-          <form onSubmit={handleConfirmPayment} className="space-y-3">
+          <div className="space-y-3">
             <div className="bg-[#fdf1f5] rounded-2xl p-4 space-y-1.5 text-sm text-[#2b1620]">
               <div className="flex justify-between"><span className="text-[#2b1620]/60">Produits</span><span>{fmt(order.productsTotal)}</span></div>
               <div className="flex justify-between"><span className="text-[#2b1620]/60">Livraison</span><span>{fmt(order.deliveryFee)}</span></div>
@@ -123,37 +164,15 @@ export default function OrderModal({ product, token, onClose }: OrderModalProps)
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
-              <span className="shrink-0 w-6 h-6 rounded-full bg-[#d6407a] text-white text-xs font-bold flex items-center justify-center">1</span>
-              <p className="text-sm text-[#2b1620]">Payez <strong>{fmt(order.total)}</strong> via Wave.</p>
-            </div>
-            <a
-              href={order.payUrl}
-              target="_blank" rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 bg-[#1DC48D] hover:bg-[#17a878] text-white font-semibold text-sm py-3.5 rounded-xl transition cursor-pointer"
-            >
-              <ExternalLink className="w-4 h-4" /> Ouvrir Wave — Payer {fmt(order.total)}
-            </a>
-
-            <div className="flex items-start gap-3">
-              <span className="shrink-0 w-6 h-6 rounded-full bg-[#d6407a] text-white text-xs font-bold flex items-center justify-center">2</span>
-              <p className="text-sm text-[#2b1620]">Saisissez l'identifiant de transaction indiqué sur votre reçu Wave.</p>
-            </div>
-            <input
-              type="text" required minLength={4} placeholder="Ex : T_XXXXXXXXXXXX" value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              className={inputClass}
+            <JekoPay
+              token={token}
+              kind="order"
+              orderId={order.orderId}
+              amount={order.total}
+              onSuccess={() => setDone("online")}
+              fallback={manualWave}
             />
-
-            {error && <p className="text-xs text-rose-500">{error}</p>}
-
-            <button
-              type="submit" disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#d6407a] to-[#8a2a54] disabled:opacity-50 text-white font-semibold text-sm py-3.5 rounded-xl transition cursor-pointer"
-            >
-              <Check className="w-4 h-4" /> {submitting ? "Envoi..." : "J'ai payé — Confirmer"}
-            </button>
-          </form>
+          </div>
         ) : (
           <>
             <div className="flex items-center gap-3 bg-[#fdf1f5] rounded-2xl p-3 mb-4">
