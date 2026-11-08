@@ -69,7 +69,7 @@ function ProductTile({ product, onOrder, onOpenDetail }: { product: Product; onO
           )}
         </div>
       </div>
-      <p className="mt-2 text-xs text-[#6c5360] line-clamp-2">{product.brand} · {CATEGORY_LABELS[product.category] || product.category} · Soin sélectionné pour votre routine.</p>
+      <p className="mt-2 text-xs text-[#6c5360] line-clamp-2">{product.brand} · {CATEGORY_LABELS[product.category] || product.category} · {product.actifs?.length ? `Actifs : ${product.actifs.map(a => ACTIF_LABELS[a] || a).join(", ")}` : "Voir la fiche pour les détails du produit."}</p>
       <button
         onClick={onOrder}
         className="w-full mt-3 flex items-center justify-center gap-2 bg-[#d6407a] hover:bg-[#b82d65] text-white text-sm font-semibold py-3 rounded-xl transition cursor-pointer min-h-11"
@@ -93,7 +93,7 @@ export default function Shop({ token }: { token: string }) {
     fetch("/api/skindiag/products")
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setProducts(data.products.filter((p: Product) => !/\bm[eé]la\b/i.test(`${p.name} ${p.brand}`)));
+        if (data.success) setProducts(data.products.filter((p: Product) => !/m[eé]la/i.test(`${p.name} ${p.brand}`)));
       })
       .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
