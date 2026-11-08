@@ -28,29 +28,29 @@ function StarRating({ avg, count }: { avg: number; count: number }) {
 function ProductTile({ product, onOrder, onOpenDetail }: { product: Product; onOrder: () => void; onOpenDetail: () => void }) {
   const hasPromo = product.original_price_fcfa && product.original_price_fcfa > product.price_fcfa;
   return (
-    <div className={`rounded-3xl p-3 shadow-sm transition hover:shadow-md ${product.is_sponsored ? "bg-white border-2 border-[#d6407a]/30" : "premium-card"}`}>
-      <div className="flex flex-col gap-3">
+    <div className={`rounded-3xl p-2.5 sm:p-3 shadow-sm transition hover:shadow-md ${product.is_sponsored ? "bg-white border-2 border-[#d6407a]/30" : "premium-card"}`}>
+      <div className="flex flex-col gap-2">
         {product.image_url ? (
-          <button onClick={onOpenDetail} className="relative block w-full aspect-[4/3] rounded-2xl overflow-hidden shrink-0 cursor-pointer bg-[#fff5f8]">
-            <img src={product.image_url} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-contain p-2" />
-            <span className="absolute bottom-2 right-2 rounded-xl bg-white/95 px-2.5 py-1.5 text-sm font-extrabold text-[#b82d65] shadow-sm">{product.price_fcfa.toLocaleString("fr-FR")} F TTC</span>
+          <button onClick={onOpenDetail} className="relative block w-full aspect-[3/4] sm:aspect-square rounded-2xl overflow-hidden shrink-0 cursor-pointer bg-[#fff5f8]">
+            <img src={product.image_url} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-contain p-0.5 sm:p-1" />
+            <span className="absolute bottom-1.5 left-1.5 right-1.5 rounded-xl bg-[#c60056] px-1.5 py-2 text-center text-xs sm:text-sm font-extrabold text-white shadow-md">{product.price_fcfa.toLocaleString("fr-FR")} F TTC</span>
             {product.video_url && (
               <span className="absolute inset-0 bg-black/25 flex items-center justify-center">
                 <Play className="w-4 h-4 text-white fill-white" />
               </span>
             )}
           </button>
-        ) : <div className="w-full aspect-[4/3] rounded-2xl bg-[#fff5f8] flex items-center justify-center text-xs text-[#7d6170]">Photo en préparation</div>}
+        ) : <div className="w-full aspect-[3/4] sm:aspect-square rounded-2xl bg-[#fff5f8] flex items-center justify-center text-xs text-[#7d6170]">Photo en préparation</div>}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 {product.is_sponsored && <Star className="w-3 h-3 text-[#d6407a] fill-[#d6407a] shrink-0" />}
                 {product.is_new && <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full shrink-0">NOUVEAU</span>}
-                <span className="text-sm sm:text-base font-semibold text-[#2b1620] leading-snug line-clamp-2">{product.name}</span>
+                <span className="text-sm sm:text-base font-bold text-[#2b1620] leading-snug line-clamp-2">{product.name}</span>
               </div>
               <span className="text-xs text-[#2b1620]/60">{product.brand} · {CATEGORY_LABELS[product.category] || product.category}</span>
-              <StarRating avg={product.rating_avg} count={product.rating_count} />
+              {product.rating_count > 0 && <StarRating avg={product.rating_avg} count={product.rating_count} />}
             </div>
             <div className="text-right shrink-0">
               {hasPromo && (
