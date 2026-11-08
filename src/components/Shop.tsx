@@ -12,6 +12,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   baby: "Soins bébé",
 };
 
+const URIAGE_SHOWCASE = [{"name":"Gel surgras visage et corps","image":"/products/uriage-gel-surgras.png","group":"Adulte"},{"name":"Huile lavante visage et corps","image":"/products/uriage-huile-lavante.png","group":"Adulte"},{"name":"Lait velouté corps","image":"/products/uriage-lait-veloute.png","group":"Adulte"},{"name":"Pain surgras","image":"/products/uriage-pain-surgras.png","group":"Adulte"},{"name":"Crème lavante","image":"/products/uriage-creme-lavante.png","group":"Adulte"},{"name":"1ère eau nettoyante","image":"/products/uriage-bebe-eau.png","group":"Bébé"},{"name":"1ère crème lavante","image":"/products/uriage-bebe-creme-lavante.png","group":"Bébé"},{"name":"1er change","image":"/products/uriage-bebe-change.png","group":"Bébé"},{"name":"1er lait hydratant","image":"/products/uriage-bebe-lait.png","group":"Bébé"}];
+
 function StarRating({ avg, count }: { avg: number; count: number }) {
   return (
     <div className="flex items-center gap-1 mt-1">
@@ -132,6 +134,18 @@ export default function Shop({ token }: { token: string }) {
         </a>
       </div>
 
+      <section className="mb-8" aria-label="Collection Uriage">
+        <div className="flex items-end justify-between mb-3 gap-2"><div><span className="text-xs uppercase tracking-widest text-[#b72d69] font-bold">Collection Uriage</span><h3 className="text-xl font-bold text-[#321521]">Soins adultes & bébé</h3></div><span className="text-xs text-[#765b68]">9 références</span></div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {URIAGE_SHOWCASE.map((item) => (
+            <article key={item.image} className="bg-white rounded-3xl border border-[#f0dbe5] p-2.5 shadow-sm overflow-hidden">
+              <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-[#fff4f8]"><img src={item.image} alt={`Uriage ${item.name}`} className="w-full h-full object-cover" loading="lazy" /></div>
+              <div className="pt-3 px-1 pb-1"><span className="text-[10px] font-semibold uppercase tracking-wider text-[#b52665]">{item.group}</span><h4 className="font-bold text-sm leading-snug text-[#321521] mt-1">Uriage {item.name}</h4><p className="text-xs text-[#856b78] mt-2">Prix TTC en cours de validation</p></div>
+            </article>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-[#765b68]">Collection en préparation : ces références ne sont pas encore disponibles à la commande en ligne.</p>
+      </section>
       {loadError && <p role="alert" className="mb-4 text-sm text-rose-700">Impossible de charger le catalogue. Réessayez dans quelques instants.</p>}
       {loading ? (
         <p className="text-sm text-[#2b1620]/40 text-center py-10">Chargement...</p>
