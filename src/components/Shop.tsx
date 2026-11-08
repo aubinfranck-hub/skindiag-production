@@ -29,23 +29,24 @@ function ProductTile({ product, onOrder, onOpenDetail }: { product: Product; onO
   return (
     <div className={`rounded-3xl p-3 shadow-sm transition hover:shadow-md ${product.is_sponsored ? "bg-white border-2 border-[#d6407a]/30" : "premium-card"}`}>
       <div className="flex flex-col gap-3">
-        {product.image_url && (
-          <button onClick={onOpenDetail} className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shrink-0 cursor-pointer bg-[#fff5f8]">
-            <img src={product.image_url} alt={product.name} className="w-full h-full object-contain p-2" />
+        {product.image_url ? (
+          <button onClick={onOpenDetail} className="relative block w-full aspect-[4/3] rounded-2xl overflow-hidden shrink-0 cursor-pointer bg-[#fff5f8]">
+            <img src={product.image_url} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-contain p-2" />
+            <span className="absolute bottom-2 right-2 rounded-xl bg-white/95 px-2.5 py-1.5 text-sm font-extrabold text-[#b82d65] shadow-sm">{product.price_fcfa.toLocaleString("fr-FR")} F TTC</span>
             {product.video_url && (
               <span className="absolute inset-0 bg-black/25 flex items-center justify-center">
                 <Play className="w-4 h-4 text-white fill-white" />
               </span>
             )}
           </button>
-        )}
+        ) : <div className="w-full aspect-[4/3] rounded-2xl bg-[#fff5f8] flex items-center justify-center text-xs text-[#7d6170]">Photo en préparation</div>}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 {product.is_sponsored && <Star className="w-3 h-3 text-[#d6407a] fill-[#d6407a] shrink-0" />}
                 {product.is_new && <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full shrink-0">NOUVEAU</span>}
-                <span className="text-base font-semibold text-[#2b1620] truncate">{product.name}</span>
+                <span className="text-sm sm:text-base font-semibold text-[#2b1620] leading-snug line-clamp-2">{product.name}</span>
               </div>
               <span className="text-xs text-[#2b1620]/60">{product.brand} · {CATEGORY_LABELS[product.category] || product.category}</span>
               <StarRating avg={product.rating_avg} count={product.rating_count} />
@@ -68,6 +69,7 @@ function ProductTile({ product, onOrder, onOpenDetail }: { product: Product; onO
           )}
         </div>
       </div>
+      <p className="mt-2 text-xs text-[#6c5360] line-clamp-2">{product.brand} · {CATEGORY_LABELS[product.category] || product.category} · Soin sélectionné pour votre routine.</p>
       <button
         onClick={onOrder}
         className="w-full mt-3 flex items-center justify-center gap-2 bg-[#d6407a] hover:bg-[#b82d65] text-white text-sm font-semibold py-3 rounded-xl transition cursor-pointer min-h-11"
@@ -81,6 +83,7 @@ function ProductTile({ product, onOrder, onOpenDetail }: { product: Product; onO
 export default function Shop({ token }: { token: string }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [orderingProduct, setOrderingProduct] = useState<Product | null>(null);
@@ -90,8 +93,9 @@ export default function Shop({ token }: { token: string }) {
     fetch("/api/skindiag/products")
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setProducts(data.products);
+        if (data.success) setProducts(data.products.filter((p: Product) => !/\bm[eé]la\b/i.test(`${p.name} ${p.brand}`)));
       })
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -108,7 +112,7 @@ export default function Shop({ token }: { token: string }) {
 
   return (
     <div className="animate-fade-in">
-      <h2 className="text-xl sm:text-2xl font-display font-semibold text-[#2b1620] mb-1">Boutique</h2>
+      <div className="rounded-3xl bg-gradient-to-br from-[#2b1620] to-[#8e315c] text-white p-5 sm:p-7 mb-5 shadow-lg"><span className="text-xs tracking-[0.2em] uppercase text-white/70">SkinDiag sélection</span><h2 className="text-2xl sm:text-3xl font-display font-bold mt-2">Votre rituel beauté, en confiance.</h2><p className="text-sm text-white/80 mt-2">Soins visage, corps et bébé. Découvrez nos produits et commandez simplement depuis votre téléphone.</p></div>
       <p className="text-xs sm:text-sm text-[#2b1620]/60 mb-4">Tous les produits disponibles, à commander directement.</p>
 
       {/* Bandeau confiance, façon boutique en ligne */}
@@ -127,6 +131,7 @@ export default function Shop({ token }: { token: string }) {
         </a>
       </div>
 
+      {loadError && <p role="alert" className="mb-4 text-sm text-rose-700">Impossible de charger le catalogue. Réessayez dans quelques instants.</p>}
       {loading ? (
         <p className="text-sm text-[#2b1620]/40 text-center py-10">Chargement...</p>
       ) : (
