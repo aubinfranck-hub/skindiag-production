@@ -9,6 +9,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   serum: "Sérums",
   moisturizer: "Crèmes hydratantes",
   sunscreen: "Protection solaire",
+  baby: "Soins bébé",
 };
 
 function StarRating({ avg, count }: { avg: number; count: number }) {
@@ -113,7 +114,7 @@ export default function Shop({ token }: { token: string }) {
   return (
     <div className="animate-fade-in">
       <div className="rounded-3xl bg-gradient-to-br from-[#2b1620] to-[#8e315c] text-white p-5 sm:p-7 mb-5 shadow-lg"><span className="text-xs tracking-[0.2em] uppercase text-white/70">SkinDiag sélection</span><h2 className="text-2xl sm:text-3xl font-display font-bold mt-2">Votre rituel beauté, en confiance.</h2><p className="text-sm text-white/80 mt-2">Soins visage, corps et bébé. Découvrez nos produits et commandez simplement depuis votre téléphone.</p></div>
-      <p className="text-xs sm:text-sm text-[#2b1620]/60 mb-4">Tous les produits disponibles, à commander directement.</p>
+      <p className="text-xs sm:text-sm text-[#2b1620]/60 mb-4">Achetez directement, sans scanner la peau. L’analyse reste disponible pour des conseils personnalisés.</p>
 
       {/* Bandeau confiance, façon boutique en ligne */}
       <div className="grid grid-cols-3 gap-2 mb-5">
@@ -123,11 +124,11 @@ export default function Shop({ token }: { token: string }) {
         </div>
         <div className="premium-card rounded-xl p-2.5 text-center">
           <Wallet className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
-          <span className="text-[11px] text-[#2b1620]/70 font-medium leading-tight block">Paiement à la livraison</span>
+          <span className="text-[11px] text-[#2b1620]/70 font-medium leading-tight block">Paiement Jeko</span>
         </div>
         <a href="https://wa.me/2250757854307" target="_blank" rel="noopener noreferrer" className="premium-card rounded-xl p-2.5 text-center hover:-translate-y-0.5 transition">
-          <MessageCircle className="w-4 h-4 text-[#d6407a] mx-auto mb-1" />
-          <span className="text-[11px] text-[#2b1620]/70 font-medium leading-tight block">Service client WhatsApp</span>
+          <MessageCircle className="w-4 h-4 text-[#128c7e] mx-auto mb-1" />
+          <span className="text-[11px] text-[#128c7e] font-medium leading-tight block">WhatsApp : 07 57 85 43 07</span>
         </a>
       </div>
 
