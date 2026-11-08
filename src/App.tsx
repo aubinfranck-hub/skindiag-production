@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Scan, History, User, LogOut, CreditCard, ShieldCheck, ShoppingBag } from "lucide-react";
+import { Scan, History, User, LogOut, CreditCard, ShieldCheck, ShoppingBag, ArrowRight, Sparkles, Truck, HeartHandshake } from "lucide-react";
 import CategorySelector from "./components/CategorySelector";
 import SplashScreen from "./components/SplashScreen";
 import ZoneSelector from "./components/ZoneSelector";
@@ -28,6 +28,7 @@ export default function App() {
   const [sessionToken, setSessionToken] = useState<string | null>(() => localStorage.getItem("skindiag_token"));
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("diagnostic");
+  const [showHome, setShowHome] = useState(true);
   const [step, setStep] = useState<Step>("category");
   const [categoryId, setCategoryId] = useState<string>("visage_cou");
   const [zone, setZone] = useState<SkinZone>("visage");
@@ -172,6 +173,7 @@ export default function App() {
     setResult(null);
     setPendingImage(null);
     setStep("category");
+    setShowHome(true);
   };
 
   if (showSplash) {
@@ -226,7 +228,38 @@ export default function App() {
 
         {activeTab === "diagnostic" && (
           <>
-            {step === "category" && (
+            {step === "category" && showHome && (
+              <section className="animate-fade-in space-y-5" aria-label="Bienvenue sur SkinDiag">
+                <div className="rounded-[2rem] bg-gradient-to-br from-[#fff1f6] via-[#fff8fb] to-[#f5d9e6] p-6 sm:p-8 border border-[#eac8d6]">
+                  <span className="inline-flex items-center gap-2 text-[#aa245b] text-xs font-bold uppercase tracking-widest"><Sparkles className="w-4 h-4" /> SkinDiag · Beauté et soins</span>
+                  <h1 className="text-3xl sm:text-4xl font-display font-bold text-[#361021] leading-tight mt-4">Votre peau mérite des soins adaptés.</h1>
+                  <p className="text-sm sm:text-base text-[#684858] mt-3">Analysez votre peau pour obtenir des conseils personnalisés, ou découvrez directement notre boutique.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setShowHome(false)} className="rounded-3xl bg-[#fbe6ef] border border-[#eebcd1] p-4 sm:p-5 text-left min-h-48 flex flex-col items-start shadow-sm hover:shadow-md transition">
+                    <span className="rounded-2xl bg-white/80 p-3 text-[#c01460]"><Scan className="w-7 h-7" /></span>
+                    <span className="text-lg font-bold text-[#401326] mt-4 leading-tight">Analyser ma peau</span>
+                    <span className="text-xs text-[#765566] mt-2">Photo, analyse indicative et conseils personnalisés</span>
+                    <ArrowRight className="w-5 h-5 text-[#c01460] mt-auto" />
+                  </button>
+                  <button onClick={() => setActiveTab("boutique")} className="rounded-3xl bg-gradient-to-br from-[#dc1766] to-[#a8064c] p-4 sm:p-5 text-left min-h-48 flex flex-col items-start text-white shadow-lg hover:shadow-xl transition">
+                    <span className="rounded-2xl bg-white/20 p-3"><ShoppingBag className="w-7 h-7" /></span>
+                    <span className="text-lg font-bold mt-4 leading-tight">Boutique soins & beauté</span>
+                    <span className="text-xs text-white/85 mt-2">Soins adultes et bébé, sans scanner obligatoire</span>
+                    <ArrowRight className="w-5 h-5 mt-auto" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 divide-x divide-[#e8cbd7] rounded-2xl border border-[#f0dbe4] bg-white/80 py-4">
+                  <div className="flex flex-col items-center text-center px-2 gap-1"><Truck className="w-5 h-5 text-[#bb1c60]" /><span className="text-[11px] font-medium">Livraison Abidjan</span></div>
+                  <div className="flex flex-col items-center text-center px-2 gap-1"><CreditCard className="w-5 h-5 text-[#bb1c60]" /><span className="text-[11px] font-medium">Paiement Jeko</span></div>
+                  <div className="flex flex-col items-center text-center px-2 gap-1"><HeartHandshake className="w-5 h-5 text-[#bb1c60]" /><span className="text-[11px] font-medium">Conseils SkinDiag</span></div>
+                </div>
+                <button onClick={() => setActiveTab("boutique")} className="w-full rounded-2xl border border-[#e6c6d5] bg-white p-4 flex items-center justify-between text-[#702443] font-semibold text-sm">Découvrir les produits Uriage <ArrowRight className="w-4 h-4" /></button>
+                <p className="text-xs text-[#775b68]">L’analyse est indicative et ne remplace pas un avis dermatologique.</p>
+              </section>
+            )}
+            {step === "category" && !showHome && <button onClick={() => setShowHome(true)} className="mb-4 text-sm font-medium text-[#b81961]">← Retour à l’accueil</button>}
+            {step === "category" && !showHome && (
               <CategorySelector
                 onSelectCategory={(id) => { setCategoryId(id); setStep("zone"); }}
                 onSelectAutre={() => { setZone("autre"); setStep("mode"); }}
