@@ -27,11 +27,11 @@ function StarRating({ avg, count }: { avg: number; count: number }) {
 function ProductTile({ product, onOrder, onOpenDetail }: { product: Product; onOrder: () => void; onOpenDetail: () => void }) {
   const hasPromo = product.original_price_fcfa && product.original_price_fcfa > product.price_fcfa;
   return (
-    <div className={`rounded-2xl p-3.5 ${product.is_sponsored ? "bg-white border-2 border-[#d6407a]/30" : "premium-card"}`}>
-      <div className="flex items-start gap-3">
+    <div className={`rounded-3xl p-3 shadow-sm transition hover:shadow-md ${product.is_sponsored ? "bg-white border-2 border-[#d6407a]/30" : "premium-card"}`}>
+      <div className="flex flex-col gap-3">
         {product.image_url && (
-          <button onClick={onOpenDetail} className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 cursor-pointer">
-            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+          <button onClick={onOpenDetail} className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shrink-0 cursor-pointer bg-[#fff5f8]">
+            <img src={product.image_url} alt={product.name} className="w-full h-full object-contain p-2" />
             {product.video_url && (
               <span className="absolute inset-0 bg-black/25 flex items-center justify-center">
                 <Play className="w-4 h-4 text-white fill-white" />
@@ -70,7 +70,7 @@ function ProductTile({ product, onOrder, onOpenDetail }: { product: Product; onO
       </div>
       <button
         onClick={onOrder}
-        className="w-full mt-2.5 flex items-center justify-center gap-1.5 bg-[#2b1620]/[0.04] hover:bg-[#2b1620]/[0.07] text-[#2b1620] text-xs font-semibold py-2 rounded-lg transition cursor-pointer"
+        className="w-full mt-3 flex items-center justify-center gap-2 bg-[#d6407a] hover:bg-[#b82d65] text-white text-sm font-semibold py-3 rounded-xl transition cursor-pointer min-h-11"
       >
         <ShoppingBag className="w-3.5 h-3.5" /> Commander
       </button>
@@ -134,7 +134,7 @@ export default function Shop({ token }: { token: string }) {
           {nouveautes.length > 0 && (
             <div className="mb-5">
               <h3 className="text-sm font-semibold text-[#2b1620] mb-2.5">Nouveautés 🆕</h3>
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {nouveautes.map((p) => (
                   <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} onOpenDetail={() => setViewingDetail(p)} />
                 ))}
@@ -145,7 +145,7 @@ export default function Shop({ token }: { token: string }) {
           {promos.length > 0 && (
             <div className="mb-5">
               <h3 className="text-sm font-semibold text-[#2b1620] mb-2.5">Promos ⭐</h3>
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {promos.map((p) => (
                   <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} onOpenDetail={() => setViewingDetail(p)} />
                 ))}
@@ -181,7 +181,7 @@ export default function Shop({ token }: { token: string }) {
           {sorted.length === 0 ? (
             <p className="text-sm text-[#2b1620]/40 text-center py-10">Aucun produit trouvé.</p>
           ) : (
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {sorted.map((p) => (
                 <ProductTile key={p.id} product={p} onOrder={() => setOrderingProduct(p)} onOpenDetail={() => setViewingDetail(p)} />
               ))}
