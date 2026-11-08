@@ -201,7 +201,7 @@ export default function App() {
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:shrink-0 bg-white/70 backdrop-blur-sm border-r border-[#2b1620]/[0.07] min-h-screen p-6">
         <div className="flex items-center gap-3 mb-10">
-          <img src="/icon-192.png" alt="SkinDiag" className="w-16 h-16 object-contain" />
+          <img src="/icon-192.png" alt="SkinDiag" className="w-16 h-16 object-contain" /><span className="font-display font-bold text-2xl text-[#9e1450]">SkinDiag</span>
         </div>
         <nav className="space-y-1.5">
           {tabs.map((t) => (
@@ -218,6 +218,13 @@ export default function App() {
         </nav>
       </aside>
 
+      <header className="lg:hidden relative z-10 flex items-center justify-between px-5 pt-3 pb-2 bg-white/85 backdrop-blur-sm border-b border-[#ead6df]">
+        <button onClick={() => { setActiveTab("diagnostic"); setStep("category"); setShowHome(true); }} className="flex items-center gap-2.5 text-left" aria-label="Accueil SkinDiag">
+          <img src="/icon-192.png" alt="Logo SkinDiag" className="w-12 h-12 object-contain" />
+          <span className="flex flex-col"><span className="text-2xl leading-tight font-display font-bold text-[#9e1450]">SkinDiag</span><span className="text-[10px] text-[#684858]">Diagnostic peau & boutique soins</span></span>
+        </button>
+        <button onClick={() => setActiveTab("boutique")} className="rounded-full bg-[#fbe6ef] p-3 text-[#b20b56]" aria-label="Ouvrir la boutique"><ShoppingBag className="w-5 h-5" /></button>
+      </header>
       {/* Contenu principal */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-5 py-4 lg:py-10">
         {quotaMessage && activeTab === "abonnement" && (
